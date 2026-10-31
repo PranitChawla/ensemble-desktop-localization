@@ -42,7 +42,7 @@ provides these. Local evaluation assumes compatible model servers already exist.
 
 ## Modal H100 smoke test
 
-Use your authenticated Modal CLI configuration.
+Run with your authenticated Modal CLI configuration.
 The Modal app and H100 function are both named **`ensemble-desktop-localization`**;
 the GitHub repository remains **`ensemble-desktop-localization`**.
 
@@ -70,7 +70,7 @@ to container loopback. The H100 function has a 50-minute maximum duration and
 the CLI run stops after the experiment. A completed test does not leave an idle
 GPU serving indefinitely.
 
-Persistent volumes in the selected environment:
+Persistent volumes created by the application:
 
 - `ensemble-desktop-localization-hf-v1`: checkpoint download cache.
 - `ensemble-desktop-localization-results-v1`: reports, traces, and server logs by run ID.

@@ -32,16 +32,17 @@ class MemoryMonitor:
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     def _run(self):
-        with self.path.open("w") as stream:
-            while not self.stop_event.is_set():
-                try:
-                    sample = {"time": time.time(), **gpu_memory()}
-                    self.samples.append(sample)
+        self.path.write_text("")
+        while not self.stop_event.is_set():
+            try:
+                sample = {"time": time.time(), **gpu_memory()}
+                self.samples.append(sample)
+                with self.path.open("a") as stream:
                     stream.write(json.dumps(sample) + "\n")
-                    stream.flush()
-                except (OSError, subprocess.SubprocessError, ValueError) as error:
+            except (OSError, subprocess.SubprocessError, ValueError) as error:
+                with self.path.open("a") as stream:
                     stream.write(json.dumps({"error": str(error)}) + "\n")
-                self.stop_event.wait(self.interval)
+            self.stop_event.wait(self.interval)
 
     def start(self):
         self.thread.start()

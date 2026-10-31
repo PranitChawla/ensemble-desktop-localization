@@ -1,6 +1,6 @@
 """Bounded Modal experiments: one H100, three local servers, no public web endpoint.
 
-Always select the intended existing environment explicitly:
+Uses your authenticated Modal CLI configuration:
   modal run modal_app.py
 """
 from __future__ import annotations

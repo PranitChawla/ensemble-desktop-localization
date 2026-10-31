@@ -1,10 +1,8 @@
 # Initial H100 validation — 2026-10-31
 
-The initial format-aware pipeline passed on one **NVIDIA H100 80GB HBM3** in the
-configured Modal account. The app and GPU function were
+The initial format-aware pipeline passed on one **NVIDIA H100 80GB HBM3**. The app and GPU function were
 both named **`ensemble-desktop-localization`**.
 
-- [Modal run](https://modal.com)
 - [Full report](validation/h100-20261031T215032Z.json)
 - Candidate SHA256: `61892a4835bf94d82b495f6f4f1a56c141827cf5e28ee488ca9d99213405db1f`
 
@@ -56,7 +54,7 @@ Runtime: vLLM 0.32.0, Transformers 5.19.0, Hugging Face Hub 2.2.0, Pillow 12.3.0
 NumPy 2.2.6, HTTPX 0.28.1. Model/data revisions and further runtime versions are in
 the full report. All **25 CPU tests** and GitHub Actions checks passed.
 
-Reports and full server/request logs are in the environment's
+Reports and full server/request logs are in the
 `ensemble-desktop-localization-results-v1` volume under `/h100-20261031T215032Z/`.
 The run completed and its GPU container stopped. No public endpoint or always-on
 GPU deployment was created. OSWorld-G was not downloaded or evaluated.
