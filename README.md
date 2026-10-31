@@ -7,6 +7,8 @@ models, display intermediate images, and choose its own strategy and stopping ru
 No crop pipeline or fixed ensemble is imposed.
 See [`docs/model-formats.md`](docs/model-formats.md) for the documentation/code audit
 of each checkpoint's native coordinate convention and the explicit fallback protocols.
+The [initial H100 validation](docs/validation.md) records measured memory, context
+lengths, Python-tool checks, and the small visible integration result.
 
 ## Model pool and memory
 
