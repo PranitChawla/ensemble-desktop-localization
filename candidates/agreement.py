@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 PRIORITY = ['venus','mai','jedi']
-RADIUS = 0.02
+RADIUS = 0.005
 
 
 def choose(candidates, priority=PRIORITY, radius=RADIUS):
@@ -22,7 +22,11 @@ def predict(ctx,baseline):
     errors={}
     for alias in PRIORITY:
         try:
-            candidates[alias]=baseline(alias)['point']
+            if alias=='venus':
+                from grounding.study_policies import direct
+                candidates[alias]=direct(ctx,alias,request_pixels=4194304)['point']
+            else:
+                candidates[alias]=baseline(alias)['point']
         except Exception as error:
             candidates[alias]=None
             errors[alias]=f'{type(error).__name__}: {error}'

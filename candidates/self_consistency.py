@@ -33,12 +33,14 @@ def predict(ctx, baseline):
     finally:
         pool.temperature,pool.top_p=0.0,1.0
     points=[value['point'] for value in candidates.values() if value.get('point') is not None]
+    from grounding.study_runner import record_cost
+    consensus_cost=record_cost(pool.records)
     medoid=consensus(points)
     try:
         selected=policies.select_candidate(ctx,candidates,judge='mai',annotated=True)
     except Exception as error:
         selected={'point':medoid,'selection_error':f'{type(error).__name__}: {error}'}
     return dict(selected,candidates={alias:value['point'] for alias,value in candidates.items()},
-                sampling_failures=failures,consensus_point=medoid,
+                sampling_failures=failures,consensus_point=medoid,consensus_cost=consensus_cost,
                 sampling_temperature=TEMPERATURE,sampling_top_p=TOP_P,
                 python_operations=['coordinate_consensus','candidate_annotation'])

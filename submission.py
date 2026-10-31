@@ -11,7 +11,9 @@ from grounding.coordinates import ImageFrame
 
 
 def ground(screenshot, instruction, pool, *, controller='venus'):
-    alias=controller if controller in pool.models else next(iter(pool.models))
+    alias=controller
+    if alias not in pool.models:
+        raise ValueError(f'Unknown model {alias!r}')
     with Image.open(screenshot) as image:
         frame=ImageFrame.full(image.size)
     result=pool.ground(alias,instruction,image=screenshot,frame=frame,

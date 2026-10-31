@@ -28,7 +28,7 @@ def load_candidate(path: str | Path):
 
 
 def evaluate(manifest: str | Path, candidate: str | Path, config: dict, output_dir: str | Path,
-             *, max_calls=12, controller="qwen", limit: int | None = None) -> dict:
+             *, max_calls=6, controller="venus", limit: int | None = None) -> dict:
     manifest = Path(manifest)
     rows = [json.loads(line) for line in manifest.read_text().splitlines() if line.strip()]
     if limit:
