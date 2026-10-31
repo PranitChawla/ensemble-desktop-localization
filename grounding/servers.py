@@ -5,6 +5,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -19,6 +20,42 @@ def gpu_memory() -> dict:
         name, total, used, free = [v.strip() for v in line.split(",")]
         rows.append({"name": name, "total_mib": int(total), "used_mib": int(used), "free_mib": int(free)})
     return {"gpus": rows}
+
+
+class MemoryMonitor:
+    """Sample device memory through startup, prefill, decoding, and Python calls."""
+
+    def __init__(self, path: str | Path, interval=1.0):
+        self.path, self.interval = Path(path), interval
+        self.stop_event = threading.Event()
+        self.samples = []
+        self.thread = threading.Thread(target=self._run, daemon=True)
+
+    def _run(self):
+        with self.path.open("w") as stream:
+            while not self.stop_event.is_set():
+                try:
+                    sample = {"time": time.time(), **gpu_memory()}
+                    self.samples.append(sample)
+                    stream.write(json.dumps(sample) + "\n")
+                    stream.flush()
+                except (OSError, subprocess.SubprocessError, ValueError) as error:
+                    stream.write(json.dumps({"error": str(error)}) + "\n")
+                self.stop_event.wait(self.interval)
+
+    def start(self):
+        self.thread.start()
+        return self
+
+    def close(self):
+        self.stop_event.set()
+        self.thread.join(timeout=10)
+
+    def summary(self):
+        devices = [sample["gpus"][0] for sample in self.samples if sample.get("gpus")]
+        return {"samples": len(devices), "interval_seconds": self.interval,
+                "sampled_peak_used_mib": max((d["used_mib"] for d in devices), default=None),
+                "sampled_min_free_mib": min((d["free_mib"] for d in devices), default=None)}
 
 
 def server_command(config: dict, model: dict) -> list[str]:

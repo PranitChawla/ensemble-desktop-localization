@@ -53,6 +53,8 @@ long-context requests through each model, exercises persistent Python and a
 Python-initiated helper-model call, and runs the editable agent on a synthetic
 desktop screenshot. It records actual prompt tokens, GPU-memory snapshots,
 model responses, tool steps, and server logs.
+GPU memory is also sampled every second throughout startup and inference; the report
+includes the sampled peak and minimum free memory, rather than only idle snapshots.
 
 These are **plumbing tests, not ScreenSpot-Pro benchmark results**. The long-context
 probe reports its actual prompt length; it does not prove arbitrary 16K multimodal

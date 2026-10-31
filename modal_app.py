@@ -60,7 +60,7 @@ def test_h100(run_id: str, long_context: bool = True):
     from grounding.config import load_config
     from grounding.evaluation import evaluate
     from grounding.screenspot import prepare_visible_sample
-    from grounding.servers import ServerGroup, gpu_memory
+    from grounding.servers import MemoryMonitor, ServerGroup, gpu_memory
     from grounding.smoke import smoke
     cache.reload()
     config = load_config("/root/models.json")
@@ -72,6 +72,7 @@ def test_h100(run_id: str, long_context: bool = True):
     report["submission_sha256"] = hashlib.sha256(Path("/root/submission.py").read_bytes()).hexdigest()
     report["packages"] = {name: importlib.metadata.version(name)
                           for name in ["transformers", "huggingface_hub", "Pillow", "numpy", "httpx"]}
+    monitor = MemoryMonitor(output / "gpu-memory.jsonl").start()
     try:
         with ServerGroup(config, output / "servers") as servers:
             report["startup_memory"] = servers.snapshots
@@ -87,6 +88,8 @@ def test_h100(run_id: str, long_context: bool = True):
         report["error"] = traceback.format_exc()
         print(report["error"], flush=True)
     finally:
+        monitor.close()
+        report["memory_monitor"] = monitor.summary()
         report["final_memory"] = gpu_memory()
         (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
         results.commit()
