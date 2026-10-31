@@ -47,7 +47,10 @@ def test_paired_analysis_matches_ids_and_accounts_for_all_failures():
 
 
 def test_coordinate_consensus_selects_an_observed_cluster_member():
-    from candidates.self_consistency import consensus
+    from pathlib import Path
+
+    from grounding.evaluation import load_candidate
+    consensus=load_candidate(Path(__file__).parents[1]/"candidates/self_consistency.py").consensus
 
     points=[[0.1,0.1],[0.105,0.1],[0.11,0.1],[0.8,0.8],[0.9,0.9]]
     assert consensus(points) in points[:3]
