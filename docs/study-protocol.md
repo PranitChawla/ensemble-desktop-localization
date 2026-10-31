@@ -122,3 +122,24 @@ selection call. This is a development-informed harness allocation change, not an
 increase in the call budget. The simpler three-model coordinate-agreement policy
 can be explored offline from development predictions, with parameters frozen before
 validation. Remaining annotated/text selector development pilots use 32 examples.
+
+## Stronger resolution baseline and matched serving checks
+
+The trusted request flag alone was insufficient: vLLM rejected large images that
+exceeded its preallocated encoder cache. On worker 0, restart only Venus with a
+four-megapixel encoder capacity and 4096 batched tokens. Keep default requests at
+2116800 pixels explicitly; four-megapixel requests specify 4194304. Native two-
+megapixel accuracy remains 51/128 after rerunning all development cases, although
+some numerical point outputs differ. Refresh its first-pass cache before further
+refinement comparisons. Match worker 1's Venus capacity before validation. The
+actual transition code, settings, and memory snapshots are retained in job artifacts.
+
+The stronger one-call Venus baseline scores 71/128 at four megapixels. Before
+validation, add matched two-call full-image and Python detail-view policies that
+both begin with a fresh four-megapixel native query. Keep the detail fraction at
+0.3 and inspect displacement-gating parameters on development only. Test sampling
+at this stronger operating point as well: the Venus proposals use four megapixels;
+MAI/Jedi and the MAI selector retain their fixed native two-megapixel limits.
+Eight-case development checks verify the new sampling request path; they are
+plumbing checks rather than selection evidence. MAI-only sampling and the remaining
+context-view pilots are deferred to preserve confirmatory compute.

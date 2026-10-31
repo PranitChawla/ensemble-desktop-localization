@@ -91,5 +91,5 @@ def ground(pool, alias, instruction, *, encoded_image, frame=None, processor_kwa
     result['point_original_norm01']=to_original_point(point,'norm01',frame) if point is not None and frame else None
     result.update(raw_response=raw,format_status=convention['status'],native_space=convention['native_space'],
                   frame=frame.to_dict() if isinstance(frame,ImageFrame) else frame,
-                  supplied_image_size=list(decoded.size),processor_image_size=list(size))
+                  supplied_image_size=list(decoded.size),processor_image_size=list(size) if adapter=='jedi' else None)
     return result

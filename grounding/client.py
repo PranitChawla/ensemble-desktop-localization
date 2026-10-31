@@ -59,6 +59,8 @@ class ModelPool:
             }
             if model.get("chat_template_kwargs"):
                 payload["chat_template_kwargs"] = model["chat_template_kwargs"]
+            if processor_kwargs is None:
+                processor_kwargs = model.get("request_processor_kwargs")
             if processor_kwargs is not None:
                 payload["mm_processor_kwargs"] = processor_kwargs
             if response_schema is not None:

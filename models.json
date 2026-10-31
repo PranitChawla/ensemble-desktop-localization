@@ -45,7 +45,14 @@
         "status": "documented",
         "adapter": "venus",
         "evidence": "docs/model-formats.md#venus"
-      }
+      },
+      "server_processor_kwargs": {
+        "max_pixels": 4194304
+      },
+      "request_processor_kwargs": {
+        "max_pixels": 2116800
+      },
+      "max_num_batched_tokens": 4096
     },
     {
       "alias": "jedi",

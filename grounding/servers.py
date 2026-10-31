@@ -68,12 +68,12 @@ def server_command(config: dict, model: dict) -> list[str]:
         "--gpu-memory-utilization", str(model["gpu_memory_utilization"]),
         "--max-model-len", str(config["max_model_len"]),
         "--max-num-seqs", str(config["max_num_seqs"]),
-        "--max-num-batched-tokens", str(config["max_num_batched_tokens"]),
+        "--max-num-batched-tokens", str(model.get("max_num_batched_tokens",config["max_num_batched_tokens"])),
         "--limit-mm-per-prompt", json.dumps({"image": 3, "video": 0}),
         "--enforce-eager", "--seed", "0",
     ]
-    if model.get("processor_kwargs"):
-        command.extend(["--mm-processor-kwargs", json.dumps(model["processor_kwargs"])])
+    if model.get("server_processor_kwargs",model.get("processor_kwargs")):
+        command.extend(["--mm-processor-kwargs", json.dumps(model.get("server_processor_kwargs",model["processor_kwargs"]))])
     command.extend(model.get("extra_server_args", []))
     return command
 

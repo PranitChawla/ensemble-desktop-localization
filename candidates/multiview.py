@@ -19,7 +19,7 @@ def predict(ctx, baseline):
             tile.save(path)
             local=dict(ctx,image=tile,path=path)
             try:
-                result=policies.direct(local,'qwen')
+                result=policies.direct(local,'venus')
                 point=result['point']
                 if point is not None:
                     proposals.append([(box[0]+point[0]*tile.width)/width,
@@ -44,7 +44,7 @@ def predict(ctx, baseline):
     collage.save(path)
     local=dict(ctx,image=collage,path=path,
                instruction=ctx['instruction']+' (The image contains independent detail panels from one screen.)')
-    selected=policies.direct(local,'qwen')
+    selected=policies.direct(local,'venus')
     if selected['point'] is None:
         return {'point':None,'proposals':proposals,'python_operations':['four_view_search','montage']}
     cx,cy=selected['point'][0]*1024,selected['point'][1]*1024
