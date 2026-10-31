@@ -19,6 +19,7 @@ results = modal.Volume.from_name("ensemble-desktop-localization-results-v1", cre
 base = (
     modal.Image.from_registry("vllm/vllm-openai:v0.32.0")
     .entrypoint([])
+    .run_commands('ln -sf "$(command -v python3)" /usr/local/bin/python')
     .apt_install("fonts-dejavu-core")
     .uv_pip_install("Pillow>=11,<13", "httpx>=0.28,<0.29", "numpy>=2,<3")
     .env({"HF_HOME": "/cache/huggingface", "HF_HUB_DISABLE_TELEMETRY": "1", "PYTHONPATH": "/root"})
@@ -48,6 +49,8 @@ def download_models():
               name="ensemble-desktop-localization", max_containers=1,
               volumes={"/cache": cache, "/results": results})
 def test_h100(run_id: str, long_context: bool = True):
+    import hashlib
+    import importlib.metadata
     import platform
     import traceback
 
@@ -66,6 +69,9 @@ def test_h100(run_id: str, long_context: bool = True):
     report = {"run_id": run_id, "python": platform.python_version(), "vllm": vllm.__version__,
               "torch": torch.__version__, "cuda": torch.version.cuda,
               "hardware": gpu_memory(), "config": config, "status": "running"}
+    report["submission_sha256"] = hashlib.sha256(Path("/root/submission.py").read_bytes()).hexdigest()
+    report["packages"] = {name: importlib.metadata.version(name)
+                          for name in ["transformers", "huggingface_hub", "Pillow", "numpy", "httpx"]}
     try:
         with ServerGroup(config, output / "servers") as servers:
             report["startup_memory"] = servers.snapshots

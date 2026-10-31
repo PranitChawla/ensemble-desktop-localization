@@ -82,7 +82,7 @@ def ground(screenshot, instruction, pool, *, controller="qwen", max_steps=6, too
             result = python.execute(action["code"])
             steps.append({"code": action["code"], "stdout": result["stdout"], "error": result["error"]})
             content = [{"type": "text", "text": json.dumps({
-                "stdout": result["stdout"], "error": result["error"],
+                "stdout": result["stdout"][:4000], "error": result["error"],
                 "calls_remaining": pool.max_calls - pool.calls,
             })}]
             content.extend({"type": "image_url", "image_url": {"url": value}}
