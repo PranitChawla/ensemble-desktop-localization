@@ -114,3 +114,11 @@ MAI candidate selector. Temperature 0.7/top-p 0.9 and consensus rule remain fixe
 Per-request processor overrides are explicitly enabled on trusted loopback servers;
 the rejected earlier four-megapixel requests are serving failures, not accuracy
 measurements. No reserved validation examples have been evaluated at this point.
+
+The first specialist direct passes favor MAI over Jedi (49/128 versus 28/128).
+Before the mixed sampling job starts and before validation, allocate its five
+proposals as Venus/MAI/Venus/MAI/Jedi, retaining the same deterministic MAI sixth
+selection call. This is a development-informed harness allocation change, not an
+increase in the call budget. The simpler three-model coordinate-agreement policy
+can be explored offline from development predictions, with parameters frozen before
+validation. Remaining annotated/text selector development pilots use 32 examples.

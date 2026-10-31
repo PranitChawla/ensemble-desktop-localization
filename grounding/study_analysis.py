@@ -41,15 +41,15 @@ def paired_comparison(baseline, candidate, *, repeats=5000, seed=20261031):
             'bootstrap_repeats':repeats,'seed':seed}
 
 
-def oracle_union(predictions):
+def oracle_union(predictions, *, reference="qwen"):
     by_model={alias:{r['id']:r for r in rows} for alias,rows in predictions.items()}
     ids=sorted(set.intersection(*(set(rows) for rows in by_model.values())))
     union=sum(any(rows[i]['correct'] for rows in by_model.values()) for i in ids)
-    qwen=by_model.get('qwen',{})
+    qwen=by_model.get(reference,{})
     rescue={alias:sum(not qwen[i]['correct'] and rows[i]['correct'] for i in ids)
-            for alias,rows in by_model.items() if alias!='qwen'} if qwen else {}
+            for alias,rows in by_model.items() if alias!=reference} if qwen else {}
     return {'n':len(ids),'oracle_correct':union,'oracle_accuracy':union/len(ids) if ids else None,
-            'qwen_misses_recovered_by_model':rescue,
+            'reference_model':reference,'reference_misses_recovered_by_model':rescue,
             'warning':'Diagnostic upper bound; target labels are unavailable to actual policies'}
 
 

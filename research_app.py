@@ -108,7 +108,7 @@ def initial_jobs():
         zero.append({'name':name+'-venus-dev','policy':'refine','alias':'venus','mode':mode,
                      'fraction':fraction,'fallback':True,'limit':count})
     one=[{'name':'direct-jedi-dev','policy':'direct','alias':'jedi','limit':128}]
-    for label,samplers in [('venus',['venus']*5),('mixed',['venus','jedi','venus','jedi','mai']),
+    for label,samplers in [('venus',['venus']*5),('mixed',['venus','mai','venus','mai','jedi']),
                            ('mai',['mai']*5)]:
         one.append({'name':f'sampling-{label}-dev','policy':'custom',
                     'source':source.replace("SAMPLERS = ['venus'] * 5",f'SAMPLERS = {samplers!r}'),
