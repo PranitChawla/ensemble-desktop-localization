@@ -10,6 +10,7 @@ import modal
 
 from modal_app import ROOT, base, cache, results
 
+base = base.add_local_file(ROOT / 'modal_app.py', '/root/modal_app.py')
 app=modal.App('ensemble-desktop-localization')
 control=modal.Queue.from_name('ensemble-desktop-localization-study-control',create_if_missing=True)
 state=modal.Dict.from_name('ensemble-desktop-localization-study-state',create_if_missing=True)

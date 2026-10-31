@@ -1,6 +1,6 @@
 # Ensemble GUI Grounding
 
-An initial research environment for open-ended GUI grounding with a persistent
+An initial research harness for open-ended GUI grounding with a persistent
 Python tool and a diverse, frozen VLM pool. The editable inference policy lives
 in **`submission.py`**. It can write arbitrary Python, call any of the available
 models, display intermediate images, and choose its own strategy and stopping rule.
@@ -137,6 +137,6 @@ Pin its original/refined instruction protocol before introducing a final evaluat
 Change `submission.py` to test hypotheses about Python use, prompts, model routing,
 verification, representations, memory, and stopping. For matched comparisons, keep
 the model commits, serving settings, data splits, evaluator, and budgets fixed.
-This is an initial working environment, not yet a packaged OpenRSI/Harbor task or
+This is an initial working harness, not yet a packaged OpenRSI/Harbor task or
 an autonomous outer hill-climbing runner. No training or benchmark gain is claimed.
 
