@@ -135,3 +135,20 @@ def test_venus_documented_refusal(monkeypatch,tmp_path):
     monkeypatch.setattr(httpx,'post',post)
     result=ModelPool(load_config()).ground('venus','absent',image=image,frame=ImageFrame.full((400,200)))
     assert result['point_original_norm01'] is None
+
+
+def test_mai_parses_only_answer_and_uses_released_client_999_divisor(monkeypatch,tmp_path):
+    import httpx
+    from PIL import Image
+
+    from grounding.client import ModelPool
+    from grounding.config import load_config
+    image=tmp_path/'screen.png'
+    Image.new('RGB',(400,200)).save(image)
+    def post(url,*,json,timeout):
+        return httpx.Response(200,request=httpx.Request('POST',url),json={
+            'choices':[{'message':{'content':'<grounding_think>Maybe [200,300]</grounding_think><answer>{"coordinate":[999,999]}</answer>'}}]})
+    monkeypatch.setattr(httpx,'post',post)
+    result=ModelPool(load_config()).ground('mai','Save',image=image,frame=ImageFrame.full((400,200)))
+    assert result['point_original_norm01']==[1.0,1.0]
+    assert result['native_space']=='norm999'
