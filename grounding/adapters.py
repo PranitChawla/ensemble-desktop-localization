@@ -36,6 +36,10 @@ def ground(pool, alias, instruction, *, encoded_image, frame=None, processor_kwa
 
     with Image.open(io.BytesIO(base64.b64decode(encoded_image.split(',',1)[1]))) as decoded:
         supplied=decoded.convert('RGB')
+    if frame is not None:
+        checked=ImageFrame(**frame) if isinstance(frame,dict) else frame
+        if tuple(checked.image_size)!=tuple(supplied.size):
+            raise ValueError('Frame dimensions do not match the image actually supplied')
     convention=pool.models[alias]['grounding']
     adapter=convention.get('adapter')
     units=convention['request_space']

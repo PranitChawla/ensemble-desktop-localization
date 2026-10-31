@@ -162,6 +162,7 @@ def normalize_grounding(text, coordinate_space, image_size, frame=None):
 def grounding_prompt(instruction, space, image_size):
     width, height = image_size
     description = {
+        "norm999": "relative coordinates on a 0–999 grid; x=999 is the right edge and y=999 the bottom",
         "norm1000": "relative coordinates on a 0–1000 grid; x=1000 is the right edge and y=1000 the bottom",
         "norm01": "relative coordinates in [0,1]; x=1 is the right edge and y=1 the bottom",
         "pixels": f"absolute pixels in the supplied {width}×{height} image, with x increasing right and y down",

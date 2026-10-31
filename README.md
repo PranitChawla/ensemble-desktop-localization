@@ -96,8 +96,7 @@ Create a JSONL manifest using paths relative to the manifest file:
 
 `bbox_xyxy` uses **original-image pixel coordinates**. Predictions use normalized
 `[x,y]` coordinates. A `null` box denotes a refusal example. Labels remain in the
-evaluator and are not passed to the agent. Operational failures make aggregate
-accuracy unavailable, while traces retain the specific failure.
+evaluator and are not passed to the agent. Operational failures count as misses and are also reported separately.
 
 ```bash
 gui-grounding evaluate data/visible.jsonl --output results/experiment-001 --limit 20

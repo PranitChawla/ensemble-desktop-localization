@@ -28,7 +28,8 @@ def predict(ctx, baseline):
             try:
                 candidates[f'{alias}-{index}']=policies.direct(ctx,alias)
             except Exception as error:
-                failures.append({'model':alias,'error':f'{type(error).__name__}: {error}'})
+                candidates[f'{alias}-{index}']={'point':None}
+                failures.append({'sample_index':index,'model':alias,'error':f'{type(error).__name__}: {error}'})
     finally:
         pool.temperature,pool.top_p=0.0,1.0
     points=[value['point'] for value in candidates.values() if value.get('point') is not None]

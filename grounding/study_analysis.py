@@ -73,7 +73,7 @@ def sampling_diagnostics(rows):
     all_correct=valid=total=0
     for row in rows:
         prediction=row.get('prediction',{})
-        candidates=list(prediction.get('candidates',{}).items())
+        candidates=sorted(prediction.get('candidates',{}).items(),key=lambda item:int(item[0].rsplit('-',1)[1]))
         outcomes=[]
         for alias,point in candidates:
             hit=score_point(point,row['bbox_xyxy'],row['width'],row['height'])
@@ -85,7 +85,8 @@ def sampling_diagnostics(rows):
             total+=1
             valid+=point is not None
         for count in range(1,6):
-            prefix_hits[count]+=any(outcomes[:count])
+            prefix_hits[count]+=any(hit for (alias,_),hit in zip(candidates,outcomes)
+                                    if int(alias.rsplit('-',1)[1])<count)
         all_correct+=any(outcomes)
         point=prediction.get('consensus_point')
         consensus_rows.append(dict(row,correct=score_point(point,row['bbox_xyxy'],row['width'],row['height']),

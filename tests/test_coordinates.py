@@ -152,3 +152,14 @@ def test_mai_parses_only_answer_and_uses_released_client_999_divisor(monkeypatch
     result=ModelPool(load_config()).ground('mai','Save',image=image,frame=ImageFrame.full((400,200)))
     assert result['point_original_norm01']==[1.0,1.0]
     assert result['native_space']=='norm999'
+
+
+def test_specialist_adapter_rejects_a_frame_for_a_different_supplied_image(tmp_path):
+    from PIL import Image
+
+    from grounding.client import ModelPool
+    from grounding.config import load_config
+    image=tmp_path/'screen.png'
+    Image.new('RGB',(400,200)).save(image)
+    with pytest.raises(ValueError,match='Frame dimensions'):
+        ModelPool(load_config()).ground('venus','Save',image=image,frame=ImageFrame.full((800,400)))
