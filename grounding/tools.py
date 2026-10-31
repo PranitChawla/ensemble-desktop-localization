@@ -33,7 +33,8 @@ class PythonSession:
         self.errors = []
         threading.Thread(target=self._read_stdout, daemon=True).start()
         threading.Thread(target=self._read_stderr, daemon=True).start()
-        self._send({"screenshot_path": str(target), "instruction": instruction, "models": list(pool.models)})
+        self._send({"screenshot_path": str(target), "instruction": instruction, "models": list(pool.models),
+                    "grounding_formats": {alias: model.get("grounding", {}) for alias, model in pool.models.items()}})
         event = self._next(time.monotonic() + 30)
         if event.get("type") != "ready":
             self.close()
@@ -68,11 +69,16 @@ class PythonSession:
         self._send({"code": code})
         while True:
             event = self._next(deadline)
-            if event["type"] == "model_call":
+            if event["type"] in {"model_call", "ground_model"}:
                 try:
-                    text = self.pool.ask(event["model"], event["prompt"],
-                                         encoded_image=event.get("encoded_image"))
-                    reply = {"text": text}
+                    if event["type"] == "ground_model":
+                        result = self.pool.ground(event["model"], event["prompt"],
+                                                  encoded_image=event["encoded_image"], frame=event.get("frame"))
+                        reply = {"result": result}
+                    else:
+                        text = self.pool.ask(event["model"], event["prompt"],
+                                             encoded_image=event.get("encoded_image"))
+                        reply = {"text": text}
                 except Exception as error:
                     reply = {"error": f"{type(error).__name__}: {error}"}
                 self._send(reply)

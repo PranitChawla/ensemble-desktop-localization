@@ -92,3 +92,21 @@ class ModelPool:
             content.append({"type": "image_url", "image_url": {"url": encoded_image or image_url(image)}})
         return self.chat(alias, [{"role": "user", "content": content}])
 
+    def ground(self, alias: str, instruction: str, *, image=None, encoded_image=None, frame=None):
+        import io
+
+        from PIL import Image
+
+        from grounding.coordinates import grounding_prompt, normalize_grounding
+
+        encoded = encoded_image or image_url(image)
+        with Image.open(io.BytesIO(base64.b64decode(encoded.split(",", 1)[1]))) as decoded:
+            size = decoded.size
+        convention = self.models[alias]["grounding"]
+        space = convention["request_space"]
+        raw = self.ask(alias, grounding_prompt(instruction, space, size), encoded_image=encoded)
+        result = normalize_grounding(raw, space, size, frame)
+        result["format_status"] = convention["status"]
+        result["native_space"] = convention["native_space"]
+        return result
+

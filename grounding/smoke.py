@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from grounding.client import ModelPool
+from grounding.coordinates import ImageFrame
 from grounding.servers import gpu_memory
 from grounding.tools import PythonSession
 
@@ -41,13 +42,13 @@ def smoke(config: dict, output_dir: str | Path, *, long_context=True) -> dict:
     report = {"kind": "synthetic_plumbing_not_benchmark", "models": [], "memory": []}
     for model in config["models"]:
         started = time.monotonic()
-        text = pool.ask(model["alias"],
-                        "Locate the Save button. Return only its center as normalized [x,y] in [0,1].",
-                        image=screenshot)
+        grounding = pool.ground(model["alias"], target["instruction"],
+                               image=screenshot, frame=ImageFrame.full((1920, 1080)))
+        text = grounding["raw_response"]
         if not text.strip():
             raise RuntimeError(f"{model['alias']} returned an empty screenshot response")
         item = {"alias": model["alias"], "vision_response": text, "vision_seconds": time.monotonic() - started,
-                "vision_usage": pool.records[-1].get("usage", {})}
+                "vision_usage": pool.records[-1].get("usage", {}), "grounding": grounding}
         if long_context:
             # Real model requests exercise the KV cache, rather than just checking /health.
             # Actual prompt_tokens are recorded; this is a ~8K-token probe, not a 16K capacity proof.

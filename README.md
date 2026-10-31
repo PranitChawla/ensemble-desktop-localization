@@ -5,6 +5,8 @@ Python tool and a diverse, frozen VLM pool. The editable inference policy lives
 in **`submission.py`**. It can write arbitrary Python, call any of the available
 models, display intermediate images, and choose its own strategy and stopping rule.
 No crop pipeline or fixed ensemble is imposed.
+See [`docs/model-formats.md`](docs/model-formats.md) for the documentation/code audit
+of each checkpoint's native coordinate convention and the explicit fallback protocols.
 
 ## Model pool and memory
 
@@ -86,11 +88,16 @@ instruction, and two helpers:
 
 ```python
 answer = call_model('ministral', 'Describe the relevant control.', image=image)
+location = ground_model('qwen', instruction)
+print(location['point_original_norm01'])
 show_image(image)
 ```
 
 Imports, algorithms, transformations, annotations, and intermediate files are
 open-ended. The parent accounts for controller and helper calls under one budget;
+`ground_model` preserves each configured coordinate convention and returns explicit
+input/original-frame coordinates plus the raw response. For transformed images,
+provide an `ImageFrame`; coordinate units are never guessed from numerical magnitude.
 failed requests count and are not silently retried. Python execution has a timeout,
 output bounds, a disposable working directory, no inherited account credentials,
 and no CUDA devices exposed by default.

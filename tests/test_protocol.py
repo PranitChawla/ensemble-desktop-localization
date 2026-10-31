@@ -124,3 +124,16 @@ def test_pinned_pool_preserves_headroom():
     assert len(cfg["models"]) == 3
     assert sum(m["gpu_memory_utilization"] for m in cfg["models"]) == 0.75
 
+
+def test_python_ground_model_passes_original_frame(screenshot):
+    def localize(alias, instruction, **kwargs):
+        assert alias == "qwen" and instruction == "Click Save"
+        assert kwargs["frame"]["original_size"] == [400, 200]
+        return {"point_original_norm01": [0.75, 0.5], "coordinate_space": "norm1000"}
+
+    pool = SimpleNamespace(models={"qwen": {}}, ground=localize)
+    with PythonSession(screenshot, "Click Save", pool) as python:
+        result = python.execute("print(ground_model('qwen', instruction)['point_original_norm01'])")
+        assert result["error"] is None
+        assert "[0.75, 0.5]" in result["stdout"]
+

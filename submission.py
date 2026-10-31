@@ -10,17 +10,28 @@ import math
 import re
 
 from grounding.client import image_url
+from grounding.coordinates import ImageFrame, to_original_point
 from grounding.tools import PythonSession
 
 SYSTEM_PROMPT = """You ground desktop GUI instructions. You have a persistent Python tool.
+The task is to identify the coordinates of an EXISTING control in the supplied
+static screenshot. Python is a calculation and inspection tool for that screenshot.
+Build evidence about where the existing target is; creating a new application does
+not locate it. The ground_model helper can provide a model-specific localization.
 Return exactly one JSON object per turn, without markdown:
 {"action":"python","code":"... arbitrary Python code ..."}
-or {"action":"final","point":[x,y]} with x,y normalized to [0,1] in the ORIGINAL screenshot,
+or {"action":"final","point":[x,y]} using your declared coordinate convention in the ORIGINAL screenshot,
 or {"action":"final","point":null} if the requested target does not exist.
 
 Python globals: image (PIL original screenshot), screenshot_path, instruction,
 models (available aliases), np, Image, ImageDraw, ImageFont.
 call_model(alias, prompt, image=None) calls another frozen VLM and returns text.
+ground_model(alias, instruction, image=None, frame=None) uses the model-specific
+grounding prompt and parser. It returns raw_response, point_input_norm01, and
+point_original_norm01 when an original-image frame is known. grounding_formats
+documents each model's native/requested units. Never guess units from magnitude.
+ImageFrame.full(size) and ImageFrame.crop(original_size, crop_xyxy, supplied_size)
+define mappings; to_original_point(point, units, frame) converts pixels/norm1000/norm01.
 Pass a PIL image or file path for image. show_image(image_or_path) displays an image
 to you on the next turn. Variables persist. Imports and arbitrary Python are allowed.
 Use computation, other models, or visual inspection whenever useful. No particular
@@ -56,8 +67,20 @@ def validate_point(point):
 
 
 def ground(screenshot, instruction, pool, *, controller="qwen", max_steps=6, tool_timeout=180):
+    from PIL import Image
+
+    with Image.open(screenshot) as original:
+        frame = ImageFrame.full(original.size)
+    convention = pool.models[controller].get("grounding", {})
+    final_space = convention.get("request_space", "norm01")
+    units = {"norm1000": "0–1000 relative coordinates", "pixels": "absolute pixel coordinates",
+             "norm01": "0–1 relative coordinates"}[final_space]
+    format_note = (f"\nYour final point uses {units} in the ORIGINAL {frame.original_size[0]}x"
+                   f"{frame.original_size[1]} screenshot. You may explicitly include coordinate_space "
+                   "('norm01', 'norm1000', or 'pixels') if returning a different declared convention. Model formats: ") + json.dumps(
+        {alias: model.get("grounding", {}) for alias, model in pool.models.items()})
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": SYSTEM_PROMPT + format_note},
         {"role": "user", "content": [
             {"type": "text", "text": f"Instruction: {instruction}\nAvailable models: {list(pool.models)}"},
             {"type": "image_url", "image_url": {"url": image_url(screenshot)}},
@@ -71,8 +94,11 @@ def ground(screenshot, instruction, pool, *, controller="qwen", max_steps=6, too
             try:
                 action = parse_action(response)
                 if action["action"] == "final":
-                    point = validate_point(action["point"])
-                    return {"status": "completed", "point": point, "steps": steps, "calls": pool.calls}
+                    declared_space = action.get("coordinate_space", final_space)
+                    point = None if action["point"] is None else to_original_point(action["point"], declared_space, frame)
+                    point = validate_point(point)
+                    return {"status": "completed", "point": point, "steps": steps, "calls": pool.calls,
+                            "raw_point": action["point"], "raw_coordinate_space": declared_space}
                 if not isinstance(action.get("code"), str):
                     raise ValueError("Python action requires a code string")
             except (ValueError, KeyError) as error:

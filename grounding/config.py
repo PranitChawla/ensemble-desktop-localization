@@ -16,5 +16,8 @@ def load_config(path: str | Path = "models.json") -> dict:
     for model in models:
         if len(model["revision"]) != 40:
             raise ValueError("Pin every model to an immutable Hugging Face commit")
+        convention = model.get("grounding", {})
+        if convention.get("request_space") not in {"pixels", "norm1000", "norm01"}:
+            raise ValueError("Declare each model's requested grounding coordinate space")
     return config
 

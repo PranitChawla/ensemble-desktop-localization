@@ -67,7 +67,7 @@ def test_h100(run_id: str, long_context: bool = True):
     output = Path("/results") / run_id
     output.mkdir(parents=True, exist_ok=True)
     report = {"run_id": run_id, "python": platform.python_version(), "vllm": vllm.__version__,
-              "torch": torch.__version__, "cuda": torch.version.cuda,
+              "torch": str(torch.__version__), "cuda": torch.version.cuda,
               "hardware": gpu_memory(), "config": config, "status": "running"}
     report["submission_sha256"] = hashlib.sha256(Path("/root/submission.py").read_bytes()).hexdigest()
     report["packages"] = {name: importlib.metadata.version(name)
