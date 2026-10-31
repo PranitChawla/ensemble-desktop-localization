@@ -143,3 +143,14 @@ MAI/Jedi and the MAI selector retain their fixed native two-megapixel limits.
 Eight-case development checks verify the new sampling request path; they are
 plumbing checks rather than selection evidence. MAI-only sampling and the remaining
 context-view pilots are deferred to preserve confirmatory compute.
+
+The four-megapixel raw detail policy scored 58/128, below its own first pass
+(71/128). Displacement cutoffs 0, .001, .002, .003, .005, .01, .02, .03, .05, .1
+were inspected offline on development. The .005 cutoff accepts 64/128 refinements
+and preserves 71/128; it is the largest tested cutoff with no development loss.
+This gate is a conservative secondary policy, not an established accuracy gain.
+A .5 detail fraction receives one 64-case development check. The multiview and
+context-view pilots are deferred. Four-megapixel stochastic plumbing receives two
+disjoint eight-case chunks per arm; aggregation parameters remain those specified
+before those checks. All reserved-validation policies will be frozen explicitly
+in a separate JSON artifact before their first evaluation.

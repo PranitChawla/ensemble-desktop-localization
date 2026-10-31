@@ -67,3 +67,18 @@ def test_sampling_oracle_is_separate_from_attainable_selection():
     assert result['oracle_any_correct']==1
     assert result['selector_correct']==result['consensus_correct']==0
     assert result['by_model']['qwen']['correct']==1
+
+
+def test_standalone_python_program_has_no_labels_or_identifiers(tmp_path):
+    from types import SimpleNamespace
+
+    from PIL import Image
+
+    from grounding.program import run_program
+    path=tmp_path/'screenshot.png'
+    Image.new('RGB',(400,200)).save(path)
+    def predict(ctx,baseline):
+        assert not ({'bbox','bbox_xyxy','id','split','application','ui_type'} & ctx.keys())
+        return {'point':[0.25,0.5]}
+    result=run_program(predict,path,'Save',SimpleNamespace(calls=0))
+    assert result['point']==[0.25,0.5] and result['status']=='completed'

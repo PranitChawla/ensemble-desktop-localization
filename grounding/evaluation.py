@@ -46,7 +46,11 @@ def evaluate(manifest: str | Path, candidate: str | Path, config: dict, output_d
         pool = ModelPool(config, max_calls=max_calls, trace_path=output_dir / f"case-{index:05d}.jsonl")
         started = time.monotonic()
         try:
-            prediction = module.ground(str(image_path), row["instruction"], pool, controller=controller)
+            if hasattr(module,"ground"):
+                prediction = module.ground(str(image_path), row["instruction"], pool, controller=controller)
+            else:
+                from grounding.program import run_program
+                prediction=run_program(module.predict,str(image_path),row["instruction"],pool)
             completed = prediction["status"] == "completed"
             correct = completed and score_point(prediction["point"], row["bbox_xyxy"], width, height)
             result = {"id": row.get("id", str(index)), "prediction": prediction, "correct": correct}
