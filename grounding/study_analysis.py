@@ -61,3 +61,39 @@ def summarize_directory(root):
         summaries[summary['name']]=summary
     return summaries
 
+
+
+def sampling_diagnostics(rows):
+    """Offline label-based coverage diagnostics; never available to inference policies."""
+    from grounding.evaluation import score_point
+
+    consensus_rows=[]
+    prefix_hits=defaultdict(int)
+    by_model=defaultdict(lambda:{'proposals':0,'correct':0,'valid':0})
+    all_correct=valid=total=0
+    for row in rows:
+        prediction=row.get('prediction',{})
+        candidates=list(prediction.get('candidates',{}).items())
+        outcomes=[]
+        for alias,point in candidates:
+            hit=score_point(point,row['bbox_xyxy'],row['width'],row['height'])
+            outcomes.append(hit)
+            model=alias.rsplit('-',1)[0]
+            by_model[model]['proposals']+=1
+            by_model[model]['valid']+=point is not None
+            by_model[model]['correct']+=hit
+            total+=1
+            valid+=point is not None
+        for count in range(1,6):
+            prefix_hits[count]+=any(outcomes[:count])
+        all_correct+=any(outcomes)
+        point=prediction.get('consensus_point')
+        consensus_rows.append(dict(row,correct=score_point(point,row['bbox_xyxy'],row['width'],row['height']),
+                                   prediction={'point':point}))
+    n=len(rows)
+    return {'n':n,'selector_correct':sum(r['correct'] for r in rows),
+            'consensus_correct':sum(r['correct'] for r in consensus_rows),
+            'oracle_any_correct':all_correct,'oracle_accuracy':all_correct/n if n else None,
+            'oracle_prefix_correct':dict(prefix_hits),'proposal_count':total,'valid_proposals':valid,
+            'by_model':dict(by_model),'consensus_rows':consensus_rows,
+            'warning':'Oracle coverage uses labels offline; it is not achieved inference accuracy'}

@@ -1,0 +1,26 @@
+# Small GUI-model literature and implementation sweep
+
+Reviewed 2026-10-31. The optimization agent edits a Python harness around frozen
+VLMs. The VLMs are inference services, not Python-tool-using optimization agents.
+Published scores below describe the authors' protocols, not our reproduction.
+
+| Candidate | Backbone / output mechanism | Evidence and practical decision |
+| --- | --- | --- |
+| UI-Venus-1.5-2B | Qwen3-VL; relative center point | [Official card](https://huggingface.co/inclusionAI/UI-Venus-1.5-2B), [report](https://arxiv.org/abs/2602.09082): author-reported 57.7% ScreenSpot-Pro for **2B**, standard vLLM recipe. Selected. |
+| MAI-UI-2B | Qwen3-VL; reasoning plus answer coordinate | [Official project](https://github.com/Tongyi-MAI/MAI-UI), [checkpoint](https://huggingface.co/Tongyi-MAI/MAI-UI-2B): project reports **57.4% for 2B**. Its card's 73.5% family-level result must not be attributed to 2B. Selected; strict prompt and coordinate audit required. |
+| Jedi-3B-1080p | Qwen2.5-VL; computer-use coordinate | [Official card/demo](https://huggingface.co/xlangai/Jedi-3B-1080p), [paper](https://arxiv.org/abs/2505.13227): task-specific synthesis and a distinct training recipe; standard vLLM, but resized pixel coordinates. Selected. |
+| GUI-AIMA-3B | Qwen2.5-VL; context-anchor attention grounding | [Official code](https://github.com/sjz5202/GUI-AIMA): strong reported results, but attention extraction/custom inference differs from a standard text-completion endpoint. Good follow-up; not silently treated as a drop-in vLLM coordinate model. |
+| GUI-Actor-3B | Qwen2.5-VL; learned attention/pointer grounding | [Official code](https://github.com/microsoft/GUI-Actor) reports 42.2% without verifier and 45.9% with verifier. Custom grounding output requires an adapted service rather than assuming generic chat is sufficient. Deferred. |
+| Phi-Ground-4B-7C | Phi-3.5-Vision; bounding box | [Official card](https://huggingface.co/microsoft/Phi-Ground): independent backbone, fixed 1008×672 letterboxed input, strict prompt, custom code and linked vLLM implementation. Attractive diversity follow-up, but adds integration risk in a bounded study. Deferred. |
+| ShowUI-2B | Qwen2-VL; visual action model | [Official checkpoint](https://huggingface.co/showlab/ShowUI-2B), [paper](https://arxiv.org/abs/2411.17465): useful small baseline, older recipe and custom visual-token handling. Its reported ScreenSpot result is not a ScreenSpot-Pro score. Deferred. |
+
+Checkpoint specialization takes priority over backbone diversity, per the updated
+study requirement. Jedi and the two Qwen3-VL specialists may still produce different
+errors because of data, objectives, prompts, and output representations. Whether
+those differences help a real ensemble must be measured; architecture labels alone
+do not establish complementarity.
+
+The initial Qwen3.5/Ministral/LFM pool is retained as a historical comparison. Its
+Ministral and LFM results under the tested prompted coordinate protocols were too
+weak to justify keeping them resident. A pool replacement is reported separately
+from an improvement caused by a Python harness change.

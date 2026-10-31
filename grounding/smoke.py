@@ -61,7 +61,7 @@ def smoke(config: dict, output_dir: str | Path, *, long_context=True) -> dict:
     with PythonSession(screenshot, target["instruction"], pool) as python:
         result = python.execute(
             "print('persistent', image.size, 6 * 7)\n"
-            "answer = call_model('lfm', 'Read the labels on the two buttons.', image=image)\n"
+            f"answer = call_model({config['models'][1]['alias']!r}, 'Read the labels on the two buttons.', image=image)\n"
             "print(answer)\nshow_image(image.resize((960, 540)))"
         )
         second = python.execute("print('state persisted:', answer[:80])")

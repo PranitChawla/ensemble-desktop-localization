@@ -7,14 +7,19 @@ import re
 from PIL import ImageDraw, ImageFont
 
 from grounding.client import image_url
+from grounding.controller_diagnostic import parse_action
 from grounding.coordinates import ImageFrame, grounding_prompt, normalize_grounding
 from grounding.tools import PythonSession
-from submission import parse_action
 
 
 def direct(ctx, alias="qwen", space=None, bbox=False, request_pixels=None):
     image = ctx["image"]
     pool = ctx["pool"]
+    if space is None and not bbox:
+        result=pool.ground(alias,ctx["instruction"],image=ctx["path"],frame=ImageFrame.full(image.size),
+                          processor_kwargs={'max_pixels':request_pixels} if request_pixels else None)
+        return {"point":result["point_original_norm01"],"raw":result["raw_response"],
+                "space":result["coordinate_space"],"protocol":result}
     space = space or pool.models[alias]["grounding"]["request_space"]
     prompt = grounding_prompt(ctx["instruction"], space, image.size)
     if bbox:

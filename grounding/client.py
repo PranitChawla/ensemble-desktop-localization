@@ -13,15 +13,19 @@ class BudgetExceeded(RuntimeError):
     pass
 
 
-def image_url(path: str | Path) -> str:
+def encode_image(image) -> str:
     import io
 
+    output = io.BytesIO()
+    image.convert("RGB").save(output, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(output.getvalue()).decode()
+
+
+def image_url(path: str | Path) -> str:
     from PIL import Image
 
     with Image.open(path) as image:
-        output = io.BytesIO()
-        image.convert("RGB").save(output, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(output.getvalue()).decode()
+        return encode_image(image)
 
 
 class ModelPool:
@@ -102,21 +106,8 @@ class ModelPool:
             content.append({"type": "image_url", "image_url": {"url": encoded_image or image_url(image)}})
         return self.chat(alias, [{"role": "user", "content": content}], processor_kwargs=processor_kwargs)
 
-    def ground(self, alias: str, instruction: str, *, image=None, encoded_image=None, frame=None):
-        import io
+    def ground(self, alias: str, instruction: str, *, image=None, encoded_image=None, frame=None, processor_kwargs=None):
+        from grounding.adapters import ground
 
-        from PIL import Image
-
-        from grounding.coordinates import grounding_prompt, normalize_grounding
-
-        encoded = encoded_image or image_url(image)
-        with Image.open(io.BytesIO(base64.b64decode(encoded.split(",", 1)[1]))) as decoded:
-            size = decoded.size
-        convention = self.models[alias]["grounding"]
-        space = convention["request_space"]
-        raw = self.ask(alias, grounding_prompt(instruction, space, size), encoded_image=encoded)
-        result = normalize_grounding(raw, space, size, frame)
-        result["format_status"] = convention["status"]
-        result["native_space"] = convention["native_space"]
-        return result
-
+        return ground(self,alias,instruction,encoded_image=encoded_image or image_url(image),frame=frame,
+                      processor_kwargs=processor_kwargs)

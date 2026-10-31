@@ -97,24 +97,26 @@ def worker(run_id:str,index:int,active_seconds:int=5100):
 
 
 def initial_jobs():
-    zero=[{'name':f'direct-{alias}-dev','policy':'direct','alias':alias,'limit':128}
-          for alias in ['qwen','ministral','lfm']]
-    zero += [{'name':'direct-qwen-4mp-dev','policy':'direct','alias':'qwen','request_pixels':4194304,'limit':128},
-             {'name':'direct-qwen-box-dev','policy':'direct','alias':'qwen','bbox':True,'limit':128}]
-    zero += [{'name':f'format-{alias}-{space}-dev','policy':'direct','alias':alias,'space':space,'limit':48}
-             for alias,spaces in [('ministral',['norm1000','norm01']),('lfm',['norm1000','pixels'])]
-             for space in spaces]
-    zero += [{'name':'repeat-full-dev','policy':'refine','mode':'full','limit':128},
-             {'name':'python-detail-30-dev','policy':'refine','mode':'detail','fraction':0.3,'limit':128},
-             {'name':'python-detail-50-dev','policy':'refine','mode':'detail','fraction':0.5,'limit':128},
-             {'name':'python-detail-context-dev','policy':'refine','mode':'detail-context','fraction':0.4,
-              'fallback':True,'limit':128}]
-    one=[]
-    for controller in ['qwen','ministral']:
-        for mode in ['no-python','optional-python','required-python']:
-            one.append({'name':f'agent-{controller}-{mode}-pilot','policy':'agent','controller':controller,
-                        'python':mode!='no-python','force_python':mode=='required-python','limit':32,
-                        'max_calls':4,'max_steps':3,'max_output_tokens':256,'structured':True})
+    # The optimization agent edits Python programs; no VLM emits executable Python.
+    source=(ROOT/'candidates/self_consistency.py').read_text()
+    zero=[{'name':'direct-mai-dev','policy':'direct','alias':'mai','limit':128},
+          {'name':'direct-venus-dev','policy':'direct','alias':'venus','limit':128},
+          {'name':'direct-venus-4mp-dev','policy':'direct','alias':'venus','request_pixels':4194304,'limit':128}]
+    for name,mode,fraction,count in [('repeat-full','full',0.3,128),('python-detail-30','detail',0.3,128),
+                                     ('python-detail-50','detail',0.5,64),
+                                     ('python-detail-context','detail-context',0.4,64)]:
+        zero.append({'name':name+'-venus-dev','policy':'refine','alias':'venus','mode':mode,
+                     'fraction':fraction,'fallback':True,'limit':count})
+    one=[{'name':'direct-jedi-dev','policy':'direct','alias':'jedi','limit':128}]
+    for label,samplers in [('venus',['venus']*5),('mixed',['venus','jedi','venus','jedi','mai']),
+                           ('mai',['mai']*5)]:
+        one.append({'name':f'sampling-{label}-dev','policy':'custom',
+                    'source':source.replace("SAMPLERS = ['venus'] * 5",f'SAMPLERS = {samplers!r}'),
+                    'limit':64,'max_calls':6,'max_output_tokens':512})
+    for annotated in [True,False]:
+        one.append({'name':f'selector-specialists-{"annotated" if annotated else "text"}-dev',
+                    'policy':'select','aliases':['mai','venus','jedi'],'judge':'mai',
+                    'annotated':annotated,'limit':64})
     return [zero,one]
 
 
@@ -138,7 +140,7 @@ def main(prepare_only:bool=False,skip_prepare:bool=False,active_seconds:int=5100
             control.put(job,partition=f'{run_id}-{index}')
     if resume_baselines_from:
         for split in ['dev','validation']:
-            for alias in ['qwen','ministral','lfm']:
+            for alias in ['mai','venus','jedi']:
                 value=state.get(f'{resume_baselines_from}:baseline:{split}:{alias}',{})
                 if value:
                     state[f'{run_id}:baseline:{split}:{alias}']=value

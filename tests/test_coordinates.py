@@ -64,7 +64,7 @@ def test_refusal_is_explicit():
 def test_config_does_not_invent_native_formats():
     from grounding.config import load_config
 
-    cfg = load_config()
+    cfg = load_config("configs/generalists.json")
     formats = {model["alias"]: model["grounding"] for model in cfg["models"]}
     assert formats["qwen"]["native_space"] == "norm1000"
     for alias in ("ministral", "lfm"):
@@ -89,10 +89,49 @@ def test_grounding_requests_use_native_units_and_shared_budget(monkeypatch, tmp_
             'choices': [{'message': {'content': '{"point_2d":[750,500]}'}, 'finish_reason': 'stop'}],
         })
     monkeypatch.setattr(httpx, 'post', post)
-    pool = ModelPool(load_config(), max_calls=1)
+    pool = ModelPool(load_config('configs/generalists.json'), max_calls=1)
     result = pool.ground('qwen', 'Save', image=image, frame=ImageFrame.full((1920, 1080)))
     assert result['point_original_norm01'] == [0.75, 0.5]
     assert result['native_space'] == 'norm1000'
     with pytest.raises(BudgetExceeded):
         pool.ask('lfm', 'another request')
 
+
+
+def test_jedi_uses_resized_pixel_frame(monkeypatch,tmp_path):
+    import httpx
+    from PIL import Image
+
+    from grounding.adapters import smart_size
+    from grounding.client import ModelPool
+    from grounding.config import load_config
+    image=tmp_path/'large.png'
+    Image.new('RGB',(3840,2160)).save(image)
+    width,height=smart_size((3840,2160))
+    def post(url,*,json,timeout):
+        assert f"{width}x{height}" in json['messages'][0]['content']
+        text='{"name":"computer_use","arguments":{"action":"left_click","coordinate":['+str(width/2)+','+str(height/2)+']}}'
+        return httpx.Response(200,request=httpx.Request('POST',url),json={
+            'choices':[{'message':{'content':'<tool_call>'+text+'</tool_call>'}}]})
+    monkeypatch.setattr(httpx,'post',post)
+    result=ModelPool(load_config()).ground('jedi','Save',image=image,frame=ImageFrame.full((3840,2160)))
+    assert result['processor_image_size']==[width,height]
+    assert result['point_original_norm01']==[0.5,0.5]
+    assert width%28==height%28==0 and width*height<=2116800
+
+
+def test_venus_documented_refusal(monkeypatch,tmp_path):
+    import httpx
+    from PIL import Image
+
+    from grounding.client import ModelPool
+    from grounding.config import load_config
+    image=tmp_path/'screen.png'
+    Image.new('RGB',(400,200)).save(image)
+    def post(url,*,json,timeout):
+        assert json['messages'][0]['content'][0]['type']=='image_url'
+        return httpx.Response(200,request=httpx.Request('POST',url),json={
+            'choices':[{'message':{'content':'[-1,-1]'}}]})
+    monkeypatch.setattr(httpx,'post',post)
+    result=ModelPool(load_config()).ground('venus','absent',image=image,frame=ImageFrame.full((400,200)))
+    assert result['point_original_norm01'] is None

@@ -20,7 +20,7 @@ def main():
     evaluate.add_argument("--output", required=True)
     evaluate.add_argument("--limit", type=int)
     evaluate.add_argument("--max-calls", type=int, default=12)
-    evaluate.add_argument("--controller", default="qwen")
+    evaluate.add_argument("--controller", default="venus")
     args = parser.parse_args()
     config = load_config(args.config)
     if args.command == "server-commands":

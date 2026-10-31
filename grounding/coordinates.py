@@ -6,7 +6,7 @@ import math
 import re
 from dataclasses import asdict, dataclass
 
-SPACES = {"pixels", "norm1000", "norm01"}
+SPACES = {"pixels", "norm1000", "norm999", "norm01"}
 
 
 @dataclass(frozen=True)
@@ -48,7 +48,7 @@ def point_to_input_norm01(point, space, image_size):
     width, height = image_size
     if width <= 0 or height <= 0:
         raise ValueError("Invalid image dimensions")
-    scale_x, scale_y = (width, height) if space == "pixels" else ((1000, 1000) if space == "norm1000" else (1, 1))
+    scale_x, scale_y = (width, height) if space == "pixels" else ((1000, 1000) if space == "norm1000" else ((999, 999) if space == "norm999" else (1, 1)))
     point = [x / scale_x, y / scale_y]
     if any(v < 0 or v > 1 for v in point):
         raise ValueError(f"Coordinates out of range for declared space {space}")

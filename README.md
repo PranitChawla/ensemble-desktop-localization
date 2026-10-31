@@ -1,31 +1,22 @@
 # Ensemble GUI Grounding
 
-An initial research harness for open-ended GUI grounding with a persistent
-Python tool and a diverse, frozen VLM pool. The editable inference policy lives
-in **`submission.py`**. It can write arbitrary Python, call any of the available
-models, display intermediate images, and choose its own strategy and stopping rule.
-No crop pipeline or fixed ensemble is imposed.
-See [`docs/model-formats.md`](docs/model-formats.md) for the documentation/code audit
-of each checkpoint's native coordinate convention and the explicit fallback protocols.
-The [initial H100 validation](docs/validation.md) records measured memory, context
-lengths, Python-tool checks, and the small visible integration result.
+The optimization agent edits **`submission.py`**, a Python inference program
+around three frozen GUI-specialist VLMs. It can manipulate images, sample models,
+route requests, aggregate coordinates, and verify candidates. The VLMs return
+predictions; they do not generate or execute Python. No particular image operation
+or ensemble strategy is imposed.
 
-## Model pool and memory
+The current pool is **UI-Venus-1.5-2B (2.44B full parameters), MAI-UI-2B (2.13B),
+and Jedi-3B-1080p (3.75B)**. Exact revisions are pinned in `models.json`.
+See the [literature sweep](docs/model-sweep.md) and
+[coordinate-format audit](docs/model-formats.md). The initial generalist pool is
+preserved in `configs/generalists.json`; checkpoint replacement and harness gains
+are evaluated separately.
 
-The initial pool uses three independently pretrained language backbones:
-
-| Alias | Checkpoint | Full parameters | Approximate BF16 weights |
-| --- | --- | ---: | ---: |
-| `qwen` | `Qwen/Qwen3.5-2B` | 2.27B | 4.5 GB |
-| `ministral` | `mistralai/Ministral-3-3B-Instruct-2512-BF16` | 3.85B | 7.7 GB |
-| `lfm` | `LiquidAI/LFM2-VL-3B` | 3.00B | 6.0 GB |
-
-`models.json` pins exact checkpoint commits. All three servers run on **one H100
-80 GB**, with a 0.25 GPU-memory fraction per server (75% combined), BF16,
-16,384 total model positions, one active sequence per server, bounded visual
-inputs, and eager execution. Calls are serialized across the pool. The memory
-fraction includes each model executor's weights and automatically sized context
-cache; it is not a hard process-level isolation boundary.
+All three servers share one H100 80 GB, with a 0.25 memory fraction each, BF16,
+16,384 total positions and one active sequence per server. Calls are serialized.
+The memory fractions cover executor weights and context caches; sampled device
+memory during real requests determines the practical headroom.
 
 ## Local development
 
@@ -54,7 +45,7 @@ modal run modal_app.py --skip-download
 The first command caches pinned checkpoints on a CPU container. The second
 starts one H100 container, launches servers sequentially, runs screenshot and
 long-context requests through each model, exercises persistent Python and a
-Python-initiated helper-model call, and runs the editable agent on a synthetic
+Python-initiated helper-model call, and runs the editable Python policy on a synthetic
 desktop screenshot. It records actual prompt tokens, GPU-memory snapshots,
 model responses, tool steps, and server logs.
 GPU memory is also sampled every second throughout startup and inference; the report
@@ -82,32 +73,18 @@ remote logs with:
 modal volume get ensemble-desktop-localization-results-v1 /<run-id> ./results/<run-id>
 ```
 
-## Python tool contract
+## Editable Python harness
 
-The controller emits a JSON `python` action or a `final` action. Python runs in
-a fresh persistent interpreter per example with PIL, NumPy, the screenshot,
-instruction, and two helpers:
+`ground(screenshot, instruction, pool)` in `submission.py` returns a normalized
+original-image point or refusal. The optimization agent changes the program between
+development evaluations. Python may use PIL, NumPy, imports, temporary files, and
+arbitrary computations. The fixed VLMs are accessed through `pool.chat`, `pool.ask`,
+and `pool.ground`; all requests share an authoritative budget and failed calls count.
 
-```python
-answer = call_model('ministral', 'Describe the relevant control.', image=image)
-location = ground_model('qwen', instruction)
-print(location['point_original_norm01'])
-show_image(image)
-```
-
-Imports, algorithms, transformations, annotations, and intermediate files are
-open-ended. The parent accounts for controller and helper calls under one budget;
-`ground_model` preserves each configured coordinate convention and returns explicit
-input/original-frame coordinates plus the raw response. For transformed images,
-provide an `ImageFrame`; coordinate units are never guessed from numerical magnitude.
-failed requests count and are not silently retried. Python execution has a timeout,
-output bounds, a disposable working directory, no inherited account credentials,
-and no CUDA devices exposed by default.
-
-**This interpreter is not a security sandbox for adversarial code.** It shares the
-research container's network and filesystem. Use only trusted research candidates
-in disposable containers without mounted secrets. A hardened benchmark Judge
-requires an additional isolation and request-accounting boundary.
+`pool.ground` uses checkpoint-specific native prompts and explicit coordinate
+conversions. Transformed images require an `ImageFrame`. Units are never inferred
+from numerical magnitude. The trusted research evaluator does not provide
+adversarial isolation from dataset files; a hardened task judge needs that boundary.
 
 ## Visible development evaluation
 
@@ -138,5 +115,5 @@ Change `submission.py` to test hypotheses about Python use, prompts, model routi
 verification, representations, memory, and stopping. For matched comparisons, keep
 the model commits, serving settings, data splits, evaluator, and budgets fixed.
 This is an initial working harness, not yet a packaged OpenRSI/Harbor task or
-an autonomous outer hill-climbing runner. No training or benchmark gain is claimed.
+an autonomous outer hill-climbing runner. No training is performed. The bounded empirical study is in progress; final measured findings will be recorded here.
 

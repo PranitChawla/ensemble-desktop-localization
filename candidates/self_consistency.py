@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from grounding import study_policies as policies
 
-SAMPLERS = ['qwen'] * 5
+SAMPLERS = ['venus'] * 5
 TEMPERATURE = 0.7
 TOP_P = 0.9
 
@@ -34,7 +34,7 @@ def predict(ctx, baseline):
     points=[value['point'] for value in candidates.values() if value.get('point') is not None]
     medoid=consensus(points)
     try:
-        selected=policies.select_candidate(ctx,candidates,judge='qwen',annotated=True)
+        selected=policies.select_candidate(ctx,candidates,judge='mai',annotated=True)
     except Exception as error:
         selected={'point':medoid,'selection_error':f'{type(error).__name__}: {error}'}
     return dict(selected,candidates={alias:value['point'] for alias,value in candidates.items()},

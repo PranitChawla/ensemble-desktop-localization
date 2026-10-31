@@ -55,3 +55,15 @@ def test_coordinate_consensus_selects_an_observed_cluster_member():
     points=[[0.1,0.1],[0.105,0.1],[0.11,0.1],[0.8,0.8],[0.9,0.9]]
     assert consensus(points) in points[:3]
     assert consensus([]) is None
+
+
+def test_sampling_oracle_is_separate_from_attainable_selection():
+    from grounding.study_analysis import sampling_diagnostics
+
+    rows=[{'id':'a','correct':False,'width':100,'height':100,'bbox_xyxy':[9,9,11,11],
+           'prediction':{'point':[0.9,0.9],'consensus_point':[0.9,0.9],
+                         'candidates':{'qwen-0':[0.1,0.1],'lfm-1':[0.9,0.9]}}}]
+    result=sampling_diagnostics(rows)
+    assert result['oracle_any_correct']==1
+    assert result['selector_correct']==result['consensus_correct']==0
+    assert result['by_model']['qwen']['correct']==1

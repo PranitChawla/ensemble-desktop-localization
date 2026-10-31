@@ -8,9 +8,9 @@ from PIL import Image
 
 from grounding.client import BudgetExceeded, ModelPool
 from grounding.config import load_config
+from grounding.controller_diagnostic import ground, parse_action, validate_point
 from grounding.evaluation import score_point
 from grounding.tools import PythonSession
-from submission import ground, parse_action, validate_point
 
 
 def config():

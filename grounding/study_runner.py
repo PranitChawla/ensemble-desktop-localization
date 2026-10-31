@@ -102,14 +102,14 @@ class StudyRunner:
                         else:
                             prediction = self.baseline(ctx,job.get('alias','qwen'))
                     elif kind == 'refine':
-                        first = self.baseline(ctx,'qwen')
-                        prediction = policies.repeat_refine(ctx,first,mode=job.get('mode','full'),
+                        first = self.baseline(ctx,job.get('alias','qwen'))
+                        prediction = policies.repeat_refine(ctx,first,alias=job.get('alias','qwen'),mode=job.get('mode','full'),
                                                             fraction=job.get('fraction',0.3),
                                                             fallback=job.get('fallback',False),
                                                             max_displacement=job.get('max_displacement'))
                         prediction['first_point'] = first['point']
                     elif kind == 'select':
-                        candidates = {alias:self.baseline(ctx,alias) for alias in ['qwen','ministral','lfm']}
+                        candidates = {alias:self.baseline(ctx,alias) for alias in job.get('aliases',['qwen','venus','jedi'])}
                         prediction = policies.select_candidate(ctx,candidates,judge=job.get('judge','qwen'),
                                                                annotated=job.get('annotated',True))
                         prediction['candidates'] = {a:p['point'] for a,p in candidates.items()}

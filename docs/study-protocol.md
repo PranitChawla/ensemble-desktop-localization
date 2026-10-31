@@ -94,3 +94,23 @@ To prioritize these tests, the remaining Ministral action-controller pilots use 
 examples per arm; the Qwen matched pilots retain 32. The required-Python Ministral
 pilot is deferred. Candidate-selection and four-view pilot tests use 32 examples.
 These development sample sizes are exploratory. No validation data informed this change.
+
+## Scope correction and specialist-pool phase
+
+The user's clarified target is an outer optimization agent editing the Python
+inference harness. VLM-driven Python execution was a mistaken exploratory branch;
+its completed pilots remain archived and are excluded from the main question.
+All pending controller jobs were removed. The current `submission.py` executes an
+agent-authored program without asking a VLM to generate Python.
+
+After development-only generalist failures and the primary-source literature sweep,
+replace the pool with UI-Venus-1.5-2B, MAI-UI-2B, and Jedi-3B-1080p. All remain frozen.
+This is a new pool phase; its harness gains are measured against its own single-call
+baselines. The total GPU budget includes the earlier pilots and cold starts.
+
+Matched sampling now compares five Venus proposals, five MAI proposals, and the
+fixed mixed schedule Venus/Jedi/Venus/Jedi/MAI, followed by the same deterministic
+MAI candidate selector. Temperature 0.7/top-p 0.9 and consensus rule remain fixed.
+Per-request processor overrides are explicitly enabled on trusted loopback servers;
+the rejected earlier four-megapixel requests are serving failures, not accuracy
+measurements. No reserved validation examples have been evaluated at this point.
