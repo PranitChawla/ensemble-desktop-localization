@@ -19,7 +19,13 @@ DATA_ROOT='/cache/screenspot-study-v1'
 
 @app.function(image=base,cpu=8,memory=16384,timeout=1800,volumes={'/cache':cache})
 def prepare_data():
+    from huggingface_hub import snapshot_download
+
+    from grounding.config import load_config
     from grounding.study_data import prepare_study
+    for model in load_config('/root/models.json')['models']:
+        snapshot_download(model['repo_id'],revision=model['revision'],
+                          ignore_patterns=['*.md','.gitattributes','*.pth','*.pt','original/*'])
     metadata=prepare_study(DATA_ROOT,dev_count=128,validation_count=512)
     cache.commit()
     return metadata
