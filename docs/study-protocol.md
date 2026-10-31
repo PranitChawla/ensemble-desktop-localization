@@ -77,3 +77,20 @@ Remaining planned pilot jobs are deferred into the adjusted run. Both runs' meas
 GPU time counts against the same three-hour total; no validation feedback motivates
 this adjustment.
 
+
+## Sampling extension requested during development
+
+Before any validation evaluation, add five stochastic proposals (temperature 0.7,
+top-p 0.9), followed by one deterministic Qwen selection query. Compare five Qwen
+samples against three Qwen + one Ministral + one LFM sample with the same six-call
+maximum. Also score a Python coordinate consensus rule from the same proposals:
+choose an observed point with the most neighbors within normalized distance 0.03,
+breaking ties by total distance. Report proposal oracle coverage separately from
+attainable consensus/selection accuracy. Proposal failures remain in the denominator;
+there is no retry to fill a failed sample. Store individual proposals and sampling
+parameters. This is a finite-sampling experiment, not a best-of-N result using labels.
+
+To prioritize these tests, the remaining Ministral action-controller pilots use 16
+examples per arm; the Qwen matched pilots retain 32. The required-Python Ministral
+pilot is deferred. Candidate-selection and four-view pilot tests use 32 examples.
+These development sample sizes are exploratory. No validation data informed this change.

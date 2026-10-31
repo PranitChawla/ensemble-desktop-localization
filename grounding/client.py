@@ -34,6 +34,7 @@ class ModelPool:
         self.max_output_tokens = max_output_tokens
         self.timeout = timeout
         self.trace_path = Path(trace_path) if trace_path else None
+        self.temperature, self.top_p = 0.0, 1.0
         self.calls = 0
         self.records: list[dict] = []
         self._lock = threading.RLock()
@@ -49,7 +50,7 @@ class ModelPool:
             self.calls += 1  # Failed requests count; no silent retries or resampling.
             model = self.models[alias]
             payload = {
-                "model": alias, "messages": messages, "temperature": 0,
+                "model": alias, "messages": messages, "temperature": self.temperature, "top_p": self.top_p,
                 "max_tokens": min(max_tokens or self.max_output_tokens, self.max_output_tokens),
             }
             if model.get("chat_template_kwargs"):
@@ -60,7 +61,8 @@ class ModelPool:
                 payload["structured_outputs"] = {"json": response_schema}
             started = time.monotonic()
             record = {"call": self.calls, "model": alias, "messages": messages,
-                      "processor_kwargs": processor_kwargs, "response_schema": response_schema}
+                      "processor_kwargs": processor_kwargs, "response_schema": response_schema,
+                      "temperature": self.temperature, "top_p": self.top_p}
             try:
                 response = httpx.post(
                     f"http://127.0.0.1:{model['port']}/v1/chat/completions",
@@ -75,6 +77,8 @@ class ModelPool:
                 return text
             except Exception as error:
                 record["error"] = f"{type(error).__name__}: {str(error)[:1200]}"
+                if isinstance(error, httpx.HTTPStatusError):
+                    record["server_error"] = error.response.text[:4000]
                 raise
             finally:
                 record["wall_seconds"] = time.monotonic() - started
