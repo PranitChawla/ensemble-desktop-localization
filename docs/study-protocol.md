@@ -154,3 +154,17 @@ context-view pilots are deferred. Four-megapixel stochastic plumbing receives tw
 disjoint eight-case chunks per arm; aggregation parameters remain those specified
 before those checks. All reserved-validation policies will be frozen explicitly
 in a separate JSON artifact before their first evaluation.
+
+## Post-freeze execution and interface additions
+
+For load balancing, the frozen 128-example agreement evaluation is split into two
+64-example jobs with offsets 0 and 64, one per worker. Exact source, parameters,
+and the total example set remain unchanged; `execution-shards.json` records this
+administrative change. MAI's validation baseline runs earlier so its deterministic
+first-pass cache is available to both shards.
+
+The user requested unrestricted visual questions and a possible generalist verifier.
+The library now exposes `ask_vlm` and an unbenchmarked classification-driven Python
+example, plus a proposed Venus/MAI/Qwen pool. These additions do not alter the
+running image, frozen policies, or specialist validation. No outcome from the
+reserved set is used to tune those policies.

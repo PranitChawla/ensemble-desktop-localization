@@ -44,7 +44,8 @@ class ModelPool:
         self._lock = threading.RLock()
 
     def chat(self, alias: str, messages: list[dict], *, max_tokens: int | None = None,
-             processor_kwargs: dict | None = None, response_schema: dict | None = None) -> str:
+             processor_kwargs: dict | None = None, response_schema: dict | None = None,
+             temperature: float | None = None, top_p: float | None = None) -> str:
         # Serialize across all servers, not just within each vLLM instance.
         with self._lock:
             if alias not in self.models:
@@ -53,8 +54,10 @@ class ModelPool:
                 raise BudgetExceeded(f"Total model-call budget exhausted ({self.max_calls})")
             self.calls += 1  # Failed requests count; no silent retries or resampling.
             model = self.models[alias]
+            request_temperature = self.temperature if temperature is None else temperature
+            request_top_p = self.top_p if top_p is None else top_p
             payload = {
-                "model": alias, "messages": messages, "temperature": self.temperature, "top_p": self.top_p,
+                "model": alias, "messages": messages, "temperature": request_temperature, "top_p": request_top_p,
                 "max_tokens": min(max_tokens or self.max_output_tokens, self.max_output_tokens),
             }
             if model.get("chat_template_kwargs"):
@@ -68,7 +71,7 @@ class ModelPool:
             started = time.monotonic()
             record = {"call": self.calls, "model": alias, "messages": messages,
                       "processor_kwargs": processor_kwargs, "response_schema": response_schema,
-                      "temperature": self.temperature, "top_p": self.top_p}
+                      "temperature": request_temperature, "top_p": request_top_p}
             try:
                 response = httpx.post(
                     f"http://127.0.0.1:{model['port']}/v1/chat/completions",
@@ -107,6 +110,25 @@ class ModelPool:
         if image is not None or encoded_image is not None:
             content.append({"type": "image_url", "image_url": {"url": encoded_image or image_url(image)}})
         return self.chat(alias, [{"role": "user", "content": content}], processor_kwargs=processor_kwargs)
+
+    def ask_vlm(self, alias: str, question: str, *, image=None, images=None,
+                response_schema=None, max_tokens=None, temperature=None, top_p=None,
+                processor_kwargs=None) -> str:
+        """General visual question answering; the caller interprets arbitrary text/JSON.
+
+        Images may be paths or PIL images, including Python-created representations.
+        No coordinate parser or task taxonomy is imposed. All calls share the budget.
+        """
+        if image is not None and images is not None:
+            raise ValueError('Provide image or images, not both')
+        supplied=list(images) if images is not None else ([] if image is None else [image])
+        content=[{'type':'text','text':str(question)}]
+        for value in supplied:
+            encoded=encode_image(value) if hasattr(value,'save') else image_url(value)
+            content.append({'type':'image_url','image_url':{'url':encoded}})
+        return self.chat(alias,[{'role':'user','content':content}],response_schema=response_schema,
+                         max_tokens=max_tokens,temperature=temperature,top_p=top_p,
+                         processor_kwargs=processor_kwargs)
 
     def ground(self, alias: str, instruction: str, *, image=None, encoded_image=None, frame=None, processor_kwargs=None):
         from grounding.adapters import ground

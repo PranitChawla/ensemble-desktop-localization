@@ -1,0 +1,27 @@
+{
+  "reason": "Balance compute inside the same resource cap; no policy/parameter/case changes.",
+  "original": "agreement-4mp-validation",
+  "total_examples": 128,
+  "shards": [
+    {
+      "name": "agreement-4mp-validation-part0",
+      "policy": "custom",
+      "source": "\"\"\"Choose an observed native prediction using cross-model coordinate agreement.\"\"\"\nfrom __future__ import annotations\n\nPRIORITY = ['venus','mai','jedi']\nRADIUS = 0.005\n\n\ndef choose(candidates, priority=PRIORITY, radius=RADIUS):\n    valid=[alias for alias in priority if candidates.get(alias) is not None]\n    if not valid:\n        return None\n    def rank(alias):\n        point=candidates[alias]\n        neighbors=sum(((point[0]-candidates[other][0])**2+(point[1]-candidates[other][1])**2)**0.5<=radius\n                      for other in valid)\n        return (-neighbors,priority.index(alias))\n    return min(valid,key=rank)\n\n\ndef predict(ctx,baseline):\n    candidates={}\n    errors={}\n    for alias in PRIORITY:\n        try:\n            if alias=='venus':\n                from grounding.study_policies import direct\n                candidates[alias]=direct(ctx,alias,request_pixels=4194304)['point']\n            else:\n                candidates[alias]=baseline(alias)['point']\n        except Exception as error:\n            candidates[alias]=None\n            errors[alias]=f'{type(error).__name__}: {error}'\n    selected=choose(candidates)\n    return {'point':candidates[selected] if selected else None,'selected_alias':selected,\n            'candidates':candidates,'model_errors':errors,\n            'python_operations':['cross_model_agreement']}\n",
+      "split": "validation",
+      "limit": 64,
+      "max_calls": 3,
+      "max_output_tokens": 512,
+      "offset": 0
+    },
+    {
+      "name": "agreement-4mp-validation-part1",
+      "policy": "custom",
+      "source": "\"\"\"Choose an observed native prediction using cross-model coordinate agreement.\"\"\"\nfrom __future__ import annotations\n\nPRIORITY = ['venus','mai','jedi']\nRADIUS = 0.005\n\n\ndef choose(candidates, priority=PRIORITY, radius=RADIUS):\n    valid=[alias for alias in priority if candidates.get(alias) is not None]\n    if not valid:\n        return None\n    def rank(alias):\n        point=candidates[alias]\n        neighbors=sum(((point[0]-candidates[other][0])**2+(point[1]-candidates[other][1])**2)**0.5<=radius\n                      for other in valid)\n        return (-neighbors,priority.index(alias))\n    return min(valid,key=rank)\n\n\ndef predict(ctx,baseline):\n    candidates={}\n    errors={}\n    for alias in PRIORITY:\n        try:\n            if alias=='venus':\n                from grounding.study_policies import direct\n                candidates[alias]=direct(ctx,alias,request_pixels=4194304)['point']\n            else:\n                candidates[alias]=baseline(alias)['point']\n        except Exception as error:\n            candidates[alias]=None\n            errors[alias]=f'{type(error).__name__}: {error}'\n    selected=choose(candidates)\n    return {'point':candidates[selected] if selected else None,'selected_alias':selected,\n            'candidates':candidates,'model_errors':errors,\n            'python_operations':['cross_model_agreement']}\n",
+      "split": "validation",
+      "limit": 64,
+      "max_calls": 3,
+      "max_output_tokens": 512,
+      "offset": 64
+    }
+  ]
+}

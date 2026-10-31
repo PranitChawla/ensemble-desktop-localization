@@ -4,7 +4,11 @@ You are the optimization agent. Edit `submission.py`, an inference program that
 maps a screenshot and instruction to a normalized point `[x,y]` or refusal. Use
 Python to design any image representations, sampling, model routing, verification,
 aggregation, and stopping rules that help. The VLM checkpoints are frozen inference
-services; they do not write or execute Python. The submitted file is the algorithm.
+services; they do not write or execute Python. `pool.ask_vlm` accepts arbitrary
+visual questions, including classification, OCR, verification, or task decomposition.
+`pool.ground` is a convenience adapter for native coordinate output, not a restriction
+on what a VLM may be asked. The coding agent can build any Python decision tree
+around both interfaces. The submitted file is the algorithm.
 
 1. Read development results and state a falsifiable hypothesis.
 2. Edit the Python inference program and record the code hash and rationale.

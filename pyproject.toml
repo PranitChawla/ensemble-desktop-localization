@@ -12,6 +12,7 @@ dependencies = ["httpx>=0.28,<0.29", "Pillow>=11,<13", "numpy>=2,<3"]
 [project.optional-dependencies]
 cloud = ["modal==1.6.3"]
 dev = ["pytest>=8,<10", "ruff>=0.12"]
+analysis = ["matplotlib>=3.9,<4"]
 
 [project.scripts]
 gui-grounding = "grounding.cli:main"

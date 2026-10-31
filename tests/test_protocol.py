@@ -152,3 +152,20 @@ def test_resolution_and_json_constraints_reach_vllm(monkeypatch):
               response_schema={'type':'object'})
     assert pool.calls==1
 
+
+
+def test_ask_vlm_accepts_classification_and_python_created_images(monkeypatch):
+    def post(url,*,json,timeout):
+        assert len(json['messages'][0]['content'])==3
+        assert json['structured_outputs']['json']['properties']['kind']['enum']==['icon','text']
+        assert json['temperature']==0 and json['max_tokens']==64
+        return httpx.Response(200,request=httpx.Request('POST',url),json={
+            'choices':[{'message':{'content':'{"kind":"icon"}'}}]})
+    monkeypatch.setattr(httpx,'post',post)
+    pool=ModelPool(config(),max_calls=1)
+    result=pool.ask_vlm('qwen','Classify the target',images=[Image.new('RGB',(20,20)),Image.new('RGB',(10,10))],
+                        response_schema={'type':'object','properties':{'kind':{'enum':['icon','text']}}},
+                        temperature=0,max_tokens=64)
+    assert json.loads(result)=={'kind':'icon'}
+    with pytest.raises(BudgetExceeded):
+        pool.ask_vlm('lfm','Verify it')

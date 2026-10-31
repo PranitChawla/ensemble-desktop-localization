@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "vllm_version": "0.32.0",
+  "max_model_len": 16384,
+  "max_num_seqs": 1,
+  "max_num_batched_tokens": 2048,
+  "models": [
+    {
+      "alias": "mai",
+      "repo_id": "Tongyi-MAI/MAI-UI-2B",
+      "revision": "503050934809558c8dfd2ddedaf9621fa74ac2de",
+      "port": 8001,
+      "gpu_memory_utilization": 0.25,
+      "processor_kwargs": {
+        "max_pixels": 2116800
+      },
+      "chat_template_kwargs": {},
+      "extra_server_args": [
+        "--trust-request-mm-kwargs"
+      ],
+      "grounding": {
+        "native_space": "norm999",
+        "request_space": "norm999",
+        "status": "documented",
+        "adapter": "mai",
+        "evidence": "docs/model-formats.md#mai"
+      }
+    },
+    {
+      "alias": "venus",
+      "repo_id": "inclusionAI/UI-Venus-1.5-2B",
+      "revision": "bc4c6e62a1c545e043761439be95646d801853a4",
+      "port": 8002,
+      "gpu_memory_utilization": 0.25,
+      "processor_kwargs": {
+        "max_pixels": 2116800
+      },
+      "chat_template_kwargs": {},
+      "extra_server_args": [
+        "--trust-request-mm-kwargs"
+      ],
+      "grounding": {
+        "native_space": "norm1000",
+        "request_space": "norm1000",
+        "status": "documented",
+        "adapter": "venus",
+        "evidence": "docs/model-formats.md#venus"
+      },
+      "server_processor_kwargs": {
+        "max_pixels": 4194304
+      },
+      "request_processor_kwargs": {
+        "max_pixels": 2116800
+      },
+      "max_num_batched_tokens": 4096
+    },
+    {
+      "alias": "qwen",
+      "repo_id": "Qwen/Qwen3.5-2B",
+      "revision": "15852e8c16360a2fea060d615a32b45270f8a8fc",
+      "port": 8003,
+      "gpu_memory_utilization": 0.25,
+      "processor_kwargs": {
+        "max_pixels": 1048576
+      },
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "grounding": {
+        "native_space": "norm1000",
+        "request_space": "norm1000",
+        "status": "documented",
+        "evidence": "https://github.com/QwenLM/Qwen3.8/discussions/56"
+      },
+      "extra_server_args": [
+        "--trust-request-mm-kwargs"
+      ]
+    }
+  ]
+}
