@@ -60,7 +60,7 @@ class ModelPool:
                 payload["structured_outputs"] = {"json": response_schema}
             started = time.monotonic()
             record = {"call": self.calls, "model": alias, "messages": messages,
-                      "processor_kwargs": processor_kwargs}
+                      "processor_kwargs": processor_kwargs, "response_schema": response_schema}
             try:
                 response = httpx.post(
                     f"http://127.0.0.1:{model['port']}/v1/chat/completions",

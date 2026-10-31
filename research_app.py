@@ -93,14 +93,14 @@ def worker(run_id:str,index:int,active_seconds:int=5100):
 def initial_jobs():
     zero=[{'name':f'direct-{alias}-dev','policy':'direct','alias':alias,'limit':128}
           for alias in ['qwen','ministral','lfm']]
+    zero += [{'name':'direct-qwen-4mp-dev','policy':'direct','alias':'qwen','request_pixels':4194304,'limit':128},
+             {'name':'direct-qwen-box-dev','policy':'direct','alias':'qwen','bbox':True,'limit':128}]
     zero += [{'name':f'format-{alias}-{space}-dev','policy':'direct','alias':alias,'space':space,'limit':48}
              for alias,spaces in [('ministral',['norm1000','norm01']),('lfm',['norm1000','pixels'])]
              for space in spaces]
     zero += [{'name':'repeat-full-dev','policy':'refine','mode':'full','limit':128},
              {'name':'python-detail-30-dev','policy':'refine','mode':'detail','fraction':0.3,'limit':128},
              {'name':'python-detail-50-dev','policy':'refine','mode':'detail','fraction':0.5,'limit':128},
-             {'name':'direct-qwen-4mp-dev','policy':'direct','alias':'qwen','request_pixels':4194304,'limit':128},
-             {'name':'direct-qwen-box-dev','policy':'direct','alias':'qwen','bbox':True,'limit':128},
              {'name':'python-detail-context-dev','policy':'refine','mode':'detail-context','fraction':0.4,
               'fallback':True,'limit':128}]
     one=[]
@@ -142,7 +142,8 @@ def main(prepare_only:bool=False,skip_prepare:bool=False,active_seconds:int=5100
     calls=[worker.spawn(run_id,index,active_seconds) for index in range(2)]
     reports=[call.get() for call in calls]
     summary={'run_id':run_id,'workers':reports,
-             'measured_h100_hours':sum(r['measured_h100_hours'] for r in reports)}
+             'prior_gpu_seconds':prior_gpu_seconds,
+             'measured_h100_hours':prior_gpu_seconds/3600+sum(r['measured_h100_hours'] for r in reports)}
     (ROOT/'outputs'/f'{run_id}-compute.json').write_text(json.dumps(summary,indent=2)+'\n')
     print(json.dumps(summary,indent=2))
 
