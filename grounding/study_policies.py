@@ -12,7 +12,7 @@ from grounding.tools import PythonSession
 from submission import parse_action
 
 
-def direct(ctx, alias="qwen", space=None, bbox=False):
+def direct(ctx, alias="qwen", space=None, bbox=False, request_pixels=None):
     image = ctx["image"]
     pool = ctx["pool"]
     space = space or pool.models[alias]["grounding"]["request_space"]
@@ -20,12 +20,14 @@ def direct(ctx, alias="qwen", space=None, bbox=False):
     if bbox:
         prompt = prompt.replace('its center', 'its bounding box').replace(
             '{"point": [x,y]}', '{"bbox_2d": [x_min,y_min,x_max,y_max]}')
-    raw = pool.ask(alias, prompt, image=ctx["path"])
+    raw = pool.ask(alias, prompt, image=ctx["path"],
+                   processor_kwargs={'max_pixels':request_pixels} if request_pixels else None)
     result = normalize_grounding(raw, space, image.size, ImageFrame.full(image.size))
     return {"point": result["point_original_norm01"], "raw": raw, "space": space}
 
 
-def repeat_refine(ctx, first, *, alias="qwen", mode="full", fraction=0.3):
+def repeat_refine(ctx, first, *, alias="qwen", mode="full", fraction=0.3,
+                  fallback=False, max_displacement=None):
     image, pool = ctx["image"], ctx["pool"]
     point = first["point"]
     if point is None:
@@ -49,9 +51,30 @@ def repeat_refine(ctx, first, *, alias="qwen", mode="full", fraction=0.3):
     region.save(path)
     frame = ImageFrame.crop(image.size, box, region.size)
     prompt = grounding_prompt(ctx["instruction"], "norm1000", region.size)
-    raw = pool.ask(alias, prompt, image=path)
-    result = normalize_grounding(raw, "norm1000", region.size, frame)
-    return {"point": result["point_original_norm01"], "raw": raw, "region": list(box),
+    if mode=='detail-context':
+        messages=[{'role':'user','content':[
+            {'type':'text','text':'The first image gives full-screen context. The second image is a detail view. '+
+             prompt+' Return coordinates in the SECOND image only.'},
+            {'type':'image_url','image_url':{'url':image_url(ctx['path'])}},
+            {'type':'image_url','image_url':{'url':image_url(path)}}]}]
+        raw=pool.chat(alias,messages)
+    else:
+        raw = pool.ask(alias, prompt, image=path)
+    fallback_reason=None
+    try:
+        result = normalize_grounding(raw, "norm1000", region.size, frame)
+        final=result['point_original_norm01']
+    except ValueError as error:
+        if not fallback:
+            raise
+        final, fallback_reason = point, str(error)
+    if fallback and final is None:
+        final, fallback_reason = point, 'refusal_in_detail'
+    if final is not None and max_displacement is not None:
+        displacement=((final[0]-point[0])**2+(final[1]-point[1])**2)**0.5
+        if displacement>max_displacement:
+            final,fallback_reason=point,'large_displacement'
+    return {"point": final, "raw": raw, "region": list(box), "fallback_reason":fallback_reason,
             "python_operations": ["select_region", "render", "coordinate_mapping"]}
 
 
@@ -94,7 +117,7 @@ def select_candidate(ctx, candidates, *, judge="qwen", annotated=True):
             "python_operations": ["annotate_candidates"] if annotated else []}
 
 
-def agent(ctx, *, controller="qwen", python=True, force_python=False, max_steps=5):
+def agent(ctx, *, controller="qwen", python=True, force_python=False, max_steps=5, structured=False):
     pool = ctx['pool']
     instruction = ctx['instruction']
     system = (
@@ -118,9 +141,15 @@ def agent(ctx, *, controller="qwen", python=True, force_python=False, max_steps=
     messages = [{'role':'system','content':system}, {'role':'user','content':[
         {'type':'text','text':instruction}, {'type':'image_url','image_url':{'url':image_url(ctx['path'])}}]}]
     events, used_python = [], False
+    schema={'type':'object','properties':{
+        'action':{'type':'string','enum':['final','model','python'] if python else ['final','model']},
+        'point':{'anyOf':[{'type':'array','items':{'type':'number'},'minItems':2,'maxItems':2},{'type':'null'}]},
+        'coordinate_space':{'type':'string','enum':['norm1000','norm01','pixels']},
+        'model':{'type':'string','enum':['qwen','ministral','lfm']},'code':{'type':'string'}},
+        'required':['action'],'additionalProperties':False}
     with PythonSession(ctx['path'], instruction, pool, timeout=75) as session:
         for _ in range(max_steps):
-            raw = pool.chat(controller, messages)
+            raw = pool.chat(controller, messages, response_schema=schema if structured else None)
             messages.append({'role':'assistant','content':raw})
             try:
                 try:

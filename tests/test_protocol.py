@@ -137,3 +137,16 @@ def test_python_ground_model_passes_original_frame(screenshot):
         assert result["error"] is None
         assert "[0.75, 0.5]" in result["stdout"]
 
+
+def test_resolution_and_json_constraints_reach_vllm(monkeypatch):
+    def post(url, *, json, timeout):
+        assert json['mm_processor_kwargs']=={'max_pixels':4194304}
+        assert json['structured_outputs']['json']['type']=='object'
+        return httpx.Response(200,request=httpx.Request('POST',url),json={
+            'choices':[{'message':{'content':'{"action":"final","point":[500,500]}'}}]})
+    monkeypatch.setattr(httpx,'post',post)
+    pool=ModelPool(config())
+    pool.chat('qwen',[{'role':'user','content':'test'}],processor_kwargs={'max_pixels':4194304},
+              response_schema={'type':'object'})
+    assert pool.calls==1
+

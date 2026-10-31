@@ -62,3 +62,18 @@ workers accelerate independent experiments; they do not give any policy two GPUs
 The initial broad ablations are specified in `research_app.initial_jobs`. Development
 results may motivate additional trials inside the same resource and data boundary.
 
+## Development pilot adjustment
+
+The initial one-megapixel Qwen baseline scored 16/128, with only 3/85 tiny targets
+correct. Before opening validation, add a four-megapixel input control, a bounding-box
+prompt, and a detail-plus-context treatment. This tests whether visual detail limits
+the starting baseline. Processor overrides are logged in request traces.
+
+The initial unconstrained action-JSON controller is also expensive. Further paired
+agent trials use the same constrained JSON action grammar, four-call cap, three-turn
+cap, and 256-output-token cap in both Python/no-Python arms. The initial unconstrained
+pilot is retained as a separate diagnostic, not pooled into those comparisons.
+Remaining planned pilot jobs are deferred into the adjusted run. Both runs' measured
+GPU time counts against the same three-hour total; no validation feedback motivates
+this adjustment.
+

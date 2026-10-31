@@ -95,15 +95,18 @@ class StudyRunner:
                 try:
                     kind = job['policy']
                     if kind == 'direct':
-                        if job.get('space') or job.get('bbox'):
+                        if job.get('space') or job.get('bbox') or job.get('request_pixels'):
                             prediction = policies.direct(ctx,job.get('alias','qwen'),
-                                                         space=job.get('space'),bbox=job.get('bbox',False))
+                                                         space=job.get('space'),bbox=job.get('bbox',False),
+                                                         request_pixels=job.get('request_pixels'))
                         else:
                             prediction = self.baseline(ctx,job.get('alias','qwen'))
                     elif kind == 'refine':
                         first = self.baseline(ctx,'qwen')
                         prediction = policies.repeat_refine(ctx,first,mode=job.get('mode','full'),
-                                                            fraction=job.get('fraction',0.3))
+                                                            fraction=job.get('fraction',0.3),
+                                                            fallback=job.get('fallback',False),
+                                                            max_displacement=job.get('max_displacement'))
                         prediction['first_point'] = first['point']
                     elif kind == 'select':
                         candidates = {alias:self.baseline(ctx,alias) for alias in ['qwen','ministral','lfm']}
@@ -114,7 +117,16 @@ class StudyRunner:
                         prediction = policies.agent(ctx,controller=job.get('controller','qwen'),
                                                     python=job.get('python',True),
                                                     force_python=job.get('force_python',False),
-                                                    max_steps=job.get('max_steps',5))
+                                                    max_steps=job.get('max_steps',5),
+                                                    structured=job.get('structured',False))
+                    elif kind == 'custom':
+                        import hashlib
+                        source=job['source']
+                        (output/'candidate.py').write_text(source)
+                        namespace={'policies':policies,'ImageFrame':__import__('grounding.coordinates',fromlist=['ImageFrame']).ImageFrame}
+                        exec(compile(source,'<study-candidate>','exec'),namespace)
+                        prediction=namespace['predict'](ctx,lambda alias:self.baseline(ctx,alias))
+                        prediction['source_sha256']=hashlib.sha256(source.encode()).hexdigest()
                     else:
                         raise ValueError(f'Unknown policy {kind}')
                     correct = score_point(prediction.get('point'),row['bbox_xyxy'],*image.size)

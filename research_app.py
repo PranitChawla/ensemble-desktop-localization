@@ -98,34 +98,48 @@ def initial_jobs():
              for space in spaces]
     zero += [{'name':'repeat-full-dev','policy':'refine','mode':'full','limit':128},
              {'name':'python-detail-30-dev','policy':'refine','mode':'detail','fraction':0.3,'limit':128},
-             {'name':'python-detail-50-dev','policy':'refine','mode':'detail','fraction':0.5,'limit':128}]
+             {'name':'python-detail-50-dev','policy':'refine','mode':'detail','fraction':0.5,'limit':128},
+             {'name':'direct-qwen-4mp-dev','policy':'direct','alias':'qwen','request_pixels':4194304,'limit':128},
+             {'name':'direct-qwen-box-dev','policy':'direct','alias':'qwen','bbox':True,'limit':128},
+             {'name':'python-detail-context-dev','policy':'refine','mode':'detail-context','fraction':0.4,
+              'fallback':True,'limit':128}]
     one=[]
     for controller in ['qwen','ministral']:
         for mode in ['no-python','optional-python','required-python']:
             one.append({'name':f'agent-{controller}-{mode}-pilot','policy':'agent','controller':controller,
                         'python':mode!='no-python','force_python':mode=='required-python','limit':32,
-                        'max_calls':6,'max_steps':5})
+                        'max_calls':4,'max_steps':3,'max_output_tokens':256,'structured':True})
     return [zero,one]
 
 
 @app.local_entrypoint()
-def main(prepare_only:bool=False,skip_prepare:bool=False):
+def main(prepare_only:bool=False,skip_prepare:bool=False,active_seconds:int=5100,
+         prior_gpu_seconds:float=0,resume_baselines_from:str=''):
     if not skip_prepare:
         data=prepare_data.remote()
         print(json.dumps(data,indent=2))
     if prepare_only:
         return
+    if not 1<=active_seconds<=5100 or 2*active_seconds+prior_gpu_seconds+200>10800:
+        raise ValueError('Requested runs exceed three aggregate H100-hours including safety margin')
     run_id=datetime.now(timezone.utc).strftime('study-%Y%m%dT%H%M%SZ')
     state[f'{run_id}:plan']={'run_id':run_id,'max_h100_hours':3.0,'workers':2,
-                           'worker_active_seconds':5100,'initial_jobs':initial_jobs(),
+                           'worker_active_seconds':active_seconds,'prior_gpu_seconds':prior_gpu_seconds,
+                           'initial_jobs':initial_jobs(),
                            'selection':'development only; validation starts after policy freeze'}
     for index,jobs in enumerate(initial_jobs()):
         for job in jobs:
             control.put(job,partition=f'{run_id}-{index}')
+    if resume_baselines_from:
+        for split in ['dev','validation']:
+            for alias in ['qwen','ministral','lfm']:
+                value=state.get(f'{resume_baselines_from}:baseline:{split}:{alias}',{})
+                if value:
+                    state[f'{run_id}:baseline:{split}:{alias}']=value
     (ROOT/'outputs').mkdir(exist_ok=True)
     (ROOT/'outputs'/f'{run_id}-launch.json').write_text(json.dumps({'run_id':run_id,'max_h100_hours':3.0})+'\n')
     print(f'STUDY_RUN_ID={run_id}',flush=True)
-    calls=[worker.spawn(run_id,index) for index in range(2)]
+    calls=[worker.spawn(run_id,index,active_seconds) for index in range(2)]
     reports=[call.get() for call in calls]
     summary={'run_id':run_id,'workers':reports,
              'measured_h100_hours':sum(r['measured_h100_hours'] for r in reports)}

@@ -38,7 +38,8 @@ class ModelPool:
         self.records: list[dict] = []
         self._lock = threading.RLock()
 
-    def chat(self, alias: str, messages: list[dict], *, max_tokens: int | None = None) -> str:
+    def chat(self, alias: str, messages: list[dict], *, max_tokens: int | None = None,
+             processor_kwargs: dict | None = None, response_schema: dict | None = None) -> str:
         # Serialize across all servers, not just within each vLLM instance.
         with self._lock:
             if alias not in self.models:
@@ -53,8 +54,13 @@ class ModelPool:
             }
             if model.get("chat_template_kwargs"):
                 payload["chat_template_kwargs"] = model["chat_template_kwargs"]
+            if processor_kwargs is not None:
+                payload["mm_processor_kwargs"] = processor_kwargs
+            if response_schema is not None:
+                payload["structured_outputs"] = {"json": response_schema}
             started = time.monotonic()
-            record = {"call": self.calls, "model": alias, "messages": messages}
+            record = {"call": self.calls, "model": alias, "messages": messages,
+                      "processor_kwargs": processor_kwargs}
             try:
                 response = httpx.post(
                     f"http://127.0.0.1:{model['port']}/v1/chat/completions",
@@ -86,11 +92,11 @@ class ModelPool:
                         stream.write(json.dumps(safe) + "\n")
 
     def ask(self, alias: str, prompt: str, *, image: str | Path | None = None,
-            encoded_image: str | None = None) -> str:
+            encoded_image: str | None = None, processor_kwargs: dict | None = None) -> str:
         content = [{"type": "text", "text": prompt}]
         if image is not None or encoded_image is not None:
             content.append({"type": "image_url", "image_url": {"url": encoded_image or image_url(image)}})
-        return self.chat(alias, [{"role": "user", "content": content}])
+        return self.chat(alias, [{"role": "user", "content": content}], processor_kwargs=processor_kwargs)
 
     def ground(self, alias: str, instruction: str, *, image=None, encoded_image=None, frame=None):
         import io
