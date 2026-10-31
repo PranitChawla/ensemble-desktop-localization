@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ensemble-desktop-localization"
 version = "0.1.0"
-description = "Open-ended Python-tool-assisted GUI grounding with a frozen, diverse VLM pool"
+description = "Python harness optimization with three frozen VLMs and general visual questions"
 requires-python = ">=3.11"
 dependencies = ["httpx>=0.28,<0.29", "Pillow>=11,<13", "numpy>=2,<3"]
 
 [project.optional-dependencies]
 cloud = ["modal==1.6.3"]
 dev = ["pytest>=8,<10", "ruff>=0.12"]
-analysis = ["matplotlib>=3.9,<4"]
+data = ["huggingface_hub>=1,<3"]
 
 [project.scripts]
 gui-grounding = "grounding.cli:main"

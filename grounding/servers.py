@@ -13,7 +13,11 @@ import httpx
 
 
 def gpu_memory() -> dict:
-    command = ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free", "--format=csv,noheader,nounits"]
+    command = [
+        "nvidia-smi",
+        "--query-gpu=name,memory.total,memory.used,memory.free",
+        "--format=csv,noheader,nounits",
+    ]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     rows = []
     for line in result.stdout.strip().splitlines():
@@ -54,26 +58,54 @@ class MemoryMonitor:
 
     def summary(self):
         devices = [sample["gpus"][0] for sample in self.samples if sample.get("gpus")]
-        return {"samples": len(devices), "interval_seconds": self.interval,
-                "sampled_peak_used_mib": max((d["used_mib"] for d in devices), default=None),
-                "sampled_min_free_mib": min((d["free_mib"] for d in devices), default=None)}
+        return {
+            "samples": len(devices),
+            "interval_seconds": self.interval,
+            "sampled_peak_used_mib": max((d["used_mib"] for d in devices), default=None),
+            "sampled_min_free_mib": min((d["free_mib"] for d in devices), default=None),
+        }
 
 
 def server_command(config: dict, model: dict) -> list[str]:
     command = [
-        sys.executable, "-m", "vllm.entrypoints.openai.api_server",
-        "--model", model["repo_id"], "--revision", model["revision"],
-        "--served-model-name", model["alias"], "--host", "127.0.0.1", "--port", str(model["port"]),
-        "--dtype", "bfloat16", "--tensor-parallel-size", "1",
-        "--gpu-memory-utilization", str(model["gpu_memory_utilization"]),
-        "--max-model-len", str(config["max_model_len"]),
-        "--max-num-seqs", str(config["max_num_seqs"]),
-        "--max-num-batched-tokens", str(model.get("max_num_batched_tokens",config["max_num_batched_tokens"])),
-        "--limit-mm-per-prompt", json.dumps({"image": 3, "video": 0}),
-        "--enforce-eager", "--seed", "0",
+        sys.executable,
+        "-m",
+        "vllm.entrypoints.openai.api_server",
+        "--model",
+        model["repo_id"],
+        "--revision",
+        model["revision"],
+        "--served-model-name",
+        model["alias"],
+        "--host",
+        "127.0.0.1",
+        "--port",
+        str(model["port"]),
+        "--dtype",
+        "bfloat16",
+        "--tensor-parallel-size",
+        "1",
+        "--gpu-memory-utilization",
+        str(model["gpu_memory_utilization"]),
+        "--max-model-len",
+        str(config["max_model_len"]),
+        "--max-num-seqs",
+        str(config["max_num_seqs"]),
+        "--max-num-batched-tokens",
+        str(model.get("max_num_batched_tokens", config["max_num_batched_tokens"])),
+        "--limit-mm-per-prompt",
+        json.dumps({"image": 3, "video": 0}),
+        "--enforce-eager",
+        "--seed",
+        "0",
     ]
-    if model.get("server_processor_kwargs",model.get("processor_kwargs")):
-        command.extend(["--mm-processor-kwargs", json.dumps(model.get("server_processor_kwargs",model["processor_kwargs"]))])
+    if model.get("server_processor_kwargs", model.get("processor_kwargs")):
+        command.extend(
+            [
+                "--mm-processor-kwargs",
+                json.dumps(model.get("server_processor_kwargs", model["processor_kwargs"])),
+            ]
+        )
     command.extend(model.get("extra_server_args", []))
     return command
 
@@ -94,16 +126,23 @@ class ServerGroup:
             log = log_path.open("w")
             command = server_command(self.config, model)
             environment = dict(os.environ)
-            environment.update(VLLM_WORKER_MULTIPROC_METHOD="spawn", TOKENIZERS_PARALLELISM="false",
-                               OMP_NUM_THREADS="2", HF_HUB_OFFLINE="1")
-            process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT,
-                                       env=environment, start_new_session=True)
+            environment.update(
+                VLLM_WORKER_MULTIPROC_METHOD="spawn",
+                TOKENIZERS_PARALLELISM="false",
+                OMP_NUM_THREADS="2",
+                HF_HUB_OFFLINE="1",
+            )
+            process = subprocess.Popen(
+                command, stdout=log, stderr=subprocess.STDOUT, env=environment, start_new_session=True
+            )
             self.processes.append((process, log))
             print(f"Starting {model['alias']} on localhost:{model['port']}", flush=True)
             deadline = time.monotonic() + self.startup_timeout
             while True:
                 if process.poll() is not None:
-                    raise RuntimeError(f"{model['alias']} exited {process.returncode}:\n{log_path.read_text()[-10000:]}")
+                    raise RuntimeError(
+                        f"{model['alias']} exited {process.returncode}:\n{log_path.read_text()[-10000:]}"
+                    )
                 try:
                     response = httpx.get(f"http://127.0.0.1:{model['port']}/health", timeout=2)
                     if response.status_code == 200:
@@ -139,4 +178,3 @@ class ServerGroup:
 
     def __exit__(self, *_):
         self.close()
-

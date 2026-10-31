@@ -1,118 +1,133 @@
 # Ensemble GUI Grounding
 
-The optimization agent edits **`submission.py`**, a Python inference program
-around three frozen GUI-specialist VLMs. It can manipulate images, sample models,
-route requests, aggregate coordinates, and verify candidates. The VLMs return
-predictions; they do not generate or execute Python. No particular image operation
-or ensemble strategy is imposed.
+A task for a coding agent to improve a **single Python grounding harness** around
+three frozen VLMs. The agent uses Python to design the algorithm. VLMs provide
+answers and predictions through a general API; they do not write or execute Python.
 
-The current pool is **UI-Venus-1.5-2B (2.44B full parameters), MAI-UI-2B (2.13B),
-and Jedi-3B-1080p (3.75B)**. Exact revisions are pinned in `models.json`.
-See the [literature sweep](docs/model-sweep.md) and
-[coordinate-format audit](docs/model-formats.md). The initial generalist pool is
-preserved in `configs/generalists.json`; checkpoint replacement and harness gains
-are evaluated separately.
+Start with the [agent prompt](instruction.md), [fixed task contract](task.toml),
+[API reference](docs/api.md), and [starting submission](submission.py). The repository contains the task and
+reference evaluator. Experiment reports and analysis scripts are kept outside the
+repository.
 
-All three servers share one H100 80 GB, with a 0.25 memory fraction each, BF16,
-16,384 total positions and one active sequence per server. Calls are serialized.
-The memory fractions cover executor weights and context caches; sampled device
-memory during real requests determines the practical headroom.
+```mermaid
+flowchart LR
+  A["Coding agent + Python tool"] -->|edits| B["submission.py"]
+  B <-->|"budgeted visual questions"| C["Parent VLM gateway"]
+  C <--> D["Three frozen VLMs"]
+  B -->|"original-image point"| E["Judge scorer"]
+  F["Judge-owned labels"] --> E
+```
 
-## Local development
+## Model pool
+
+| Alias | Checkpoint | Full parameters | Intended role |
+| --- | --- | ---: | --- |
+| `venus` | inclusionAI/UI-Venus-1.5-2B | 2.44B | GUI grounding |
+| `mai` | Tongyi-MAI/MAI-UI-2B | 2.13B | Independent grounding evidence |
+| `qwen` | Qwen/Qwen3.5-2B | 2.27B | General visual questions, classification, verification, and grounding |
+
+Exact revisions and input limits are pinned in [`models.json`](models.json).
+[`configs/specialists.json`](configs/specialists.json) provides a separate Jedi
+specialist variant. Select and freeze a pool before an improvement run.
+These role descriptions are design choices, not performance claims.
+See the [model documentation](docs/models.md) and
+[coordinate-format audit](docs/model-formats.md).
+
+The supplied serving configuration places three vLLM servers on one H100 80 GB,
+using BF16, a 0.25 memory fraction each, one active sequence per server, and 16,384
+positions per request. Calls are serialized. Memory fractions include executor
+weights and context caches. This task revision has not been GPU-retested after the
+latest pool/runtime changes.
+
+## General VLM questions and Python decisions
+
+```python
+kind = pool.ask_vlm(
+    "qwen", "Classify the requested target as text, icon, spatial, or uncertain.",
+    image=screenshot,
+    response_schema={
+        "type": "object",
+        "properties": {"kind": {"enum": ["text", "icon", "spatial", "uncertain"]}},
+        "required": ["kind"],
+        "additionalProperties": False,
+    },
+)
+```
+
+`ask_vlm` accepts arbitrary questions and Python-created images. The program can
+use answers to choose models, prepare new evidence, verify proposals, or stop.
+`pool.chat` supports custom conversations. `pool.ground` supplies audited native
+prompts and explicit coordinate conversion as a convenience.
+[`candidates/classify_then_ground.py`](candidates/classify_then_ground.py) is an
+unbenchmarked example of a classification-driven decision tree. No particular
+image manipulation or ensemble is imposed by the task.
+
+## Evaluation contract
+
+The submission exports `ground(screenshot, instruction, pool)` and returns
+`{"point": [x,y]}` in original-image [0,1] coordinates, or `{"point": null}` for
+an absent target. Each case permits six VLM requests, 512 output tokens per request,
+and 120 seconds of submission execution. Request failures consume budget.
+
+The parent evaluator retains labels, enforces VLM accounting, and runs each
+submission in a fresh subprocess with a generic screenshot name, temporary working
+directory, bounded captured output, and no inherited credentials. It kills the
+process group on timeout. Exceptions and malformed predictions remain in the
+accuracy denominator. Results include request traces, costs, and hashes of the
+submission, model configuration, and evaluation manifest.
+
+The subprocess boundary prevents accidental label passing; it is **not an
+adversarial filesystem/network sandbox**. A production judge must isolate its
+label store and model-service network separately. Held-out OSWorld-G evaluation
+uses a judge-provided immutable manifest with original instructions. The task does
+not download or expose those examples to the coding agent.
+
+## Local setup
 
 ```bash
 uv venv --python 3.12
-uv pip install -e '.[cloud,dev]'
+uv pip install --python .venv/bin/python -e '.[cloud,data,dev]'
 source .venv/bin/activate
 pytest -q
 gui-grounding server-commands
 ```
 
-The local package does not install CUDA, PyTorch, or vLLM. The pinned Modal image
-provides these. Local evaluation assumes compatible model servers already exist.
+The package does not install CUDA or vLLM locally; the pinned cloud image provides
+them. Evaluation expects compatible model servers on the configured loopback ports.
 
-## Modal H100 smoke test
+Prepare the pinned visible data on CPU when needed:
 
-Run with your authenticated Modal CLI configuration.
-The Modal app and H100 function are both named **`ensemble-desktop-localization`**;
-the GitHub repository remains **`ensemble-desktop-localization`**.
+```bash
+gui-grounding prepare-visible --output data/screenspot-pro
+```
+
+A judge manifest uses paths relative to the manifest file:
+
+```json
+{"id":"case-1","image":"images/screen.png","instruction":"Click Save","bbox_xyxy":[100,200,180,240]}
+```
+
+Boxes use original-image pixels; `null` denotes an absent target. Labels are read
+only by the evaluator. Evaluate a submission into a fresh directory:
+
+```bash
+gui-grounding evaluate data/visible.jsonl --output results/candidate-001
+gui-grounding evaluate data/visible.jsonl --candidate candidates/classify_then_ground.py --output results/tree-001
+```
+
+## Optional H100 plumbing check
+
+Use your authenticated Modal CLI configuration. No account-specific settings are
+hard-coded. The app and H100 function are named **`ensemble-desktop-localization`**.
 
 ```bash
 modal run modal_app.py --download-only
 modal run modal_app.py --skip-download
 ```
 
-The first command caches pinned checkpoints on a CPU container. The second
-starts one H100 container, launches servers sequentially, runs screenshot and
-long-context requests through each model, exercises persistent Python and a
-Python-initiated helper-model call, and runs the editable Python policy on a synthetic
-desktop screenshot. It records actual prompt tokens, GPU-memory snapshots,
-model responses, tool steps, and server logs.
-GPU memory is also sampled every second throughout startup and inference; the report
-includes the sampled peak and minimum free memory, rather than only idle snapshots.
-
-These are **plumbing tests, not ScreenSpot-Pro benchmark results**. The long-context
-probe reports its actual prompt length; it does not prove arbitrary 16K multimodal
-conversations fit. Stress the intended maximum image sizes, history, and outputs
-before increasing concurrency or adding a fourth server.
-
-There is no public HTTP endpoint or always-on deployment. All model servers bind
-to container loopback. The H100 function has a 50-minute maximum duration and
-the CLI run stops after the experiment. A completed test does not leave an idle
-GPU serving indefinitely.
-
-Persistent volumes created by the application:
-
-- `ensemble-desktop-localization-hf-v1`: checkpoint download cache.
-- `ensemble-desktop-localization-results-v1`: reports, traces, and server logs by run ID.
-
-The CLI also saves the report under local `outputs/` (ignored by Git). Fetch full
-remote logs with:
-
-```bash
-modal volume get ensemble-desktop-localization-results-v1 /<run-id> ./results/<run-id>
-```
-
-## Editable Python harness
-
-`ground(screenshot, instruction, pool)` in `submission.py` returns a normalized
-original-image point or refusal. The optimization agent changes the program between
-development evaluations. Python may use PIL, NumPy, imports, temporary files, and
-arbitrary computations. The fixed VLMs are accessed through `pool.chat`, `pool.ask`,
-and `pool.ground`; all requests share an authoritative budget and failed calls count.
-
-`pool.ground` uses checkpoint-specific native prompts and explicit coordinate
-conversions. Transformed images require an `ImageFrame`. Units are never inferred
-from numerical magnitude. The trusted research evaluator does not provide
-adversarial isolation from dataset files; a hardened task judge needs that boundary.
-
-## Visible development evaluation
-
-Create a JSONL manifest using paths relative to the manifest file:
-
-```json
-{"id":"example-1","image":"images/screen.png","instruction":"Click Save","bbox_xyxy":[100,200,180,240]}
-```
-
-`bbox_xyxy` uses **original-image pixel coordinates**. Predictions use normalized
-`[x,y]` coordinates. A `null` box denotes a refusal example. Labels remain in the
-evaluator and are not passed to the agent. Operational failures count as misses and are also reported separately.
-
-```bash
-gui-grounding evaluate data/visible.jsonl --output results/experiment-001 --limit 20
-```
-
-ScreenSpot-Pro is the intended visible development benchmark. Split development
-and validation by screenshot, and consider application-disjoint validation.
-**OSWorld-G is reserved for later transfer evaluation and is not downloaded or
-queried by these scripts.** It is a public held-out benchmark, not a secret dataset.
-Pin its original/refined instruction protocol before introducing a final evaluator.
-
-## Research boundary
-
-Change `submission.py` to test hypotheses about Python use, prompts, model routing,
-verification, representations, memory, and stopping. For matched comparisons, keep
-the model commits, serving settings, data splits, evaluator, and budgets fixed.
-This is an initial working harness, not yet a packaged OpenRSI/Harbor task or
-an autonomous outer hill-climbing runner. No training is performed. The bounded empirical study is in progress; final measured findings will be recorded here.
-
+The first command caches pinned models on CPU. The second explicitly starts a
+bounded H100 check of model requests, general classification, context handling,
+and the submission/evaluator path. It records memory and request logs. It is a
+plumbing check, not a benchmark analysis, and is never started automatically by
+local tests. Servers bind to loopback; there is no public endpoint or always-on
+service. Reports are saved to local `outputs/` and the named results volume.

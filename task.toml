@@ -1,0 +1,27 @@
+[task]
+name = "ensemble-desktop-localization"
+version = "0.1.0"
+prompt = "instruction.md"
+models = "models.json"
+
+[submission]
+editable_files = ["submission.py"]
+entrypoint = "ground(screenshot, instruction, pool)"
+output = "JSON object containing point: [x, y] in original-image [0,1] coordinates, or null"
+
+[budget]
+max_model_calls = 6
+max_output_tokens_per_call = 512
+request_timeout_seconds = 45
+case_timeout_seconds = 120
+max_images_per_request = 3
+max_image_bytes = 24000000
+
+[evaluation]
+metric = "point_in_box_accuracy"
+failures_count_as_misses = true
+visible = "ScreenSpot-Pro"
+visible_revision = "210e78d3844251110bff86c95835ebd37a6930fa"
+held_out = "OSWorld-G"
+held_out_instruction_variant = "original"
+held_out_delivery = "Judge-provided immutable manifest; never mounted into the submission workspace"

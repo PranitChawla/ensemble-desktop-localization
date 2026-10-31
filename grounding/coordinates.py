@@ -1,4 +1,5 @@
 """Explicit coordinate conventions. Never infer units from numerical magnitude."""
+
 from __future__ import annotations
 
 import json
@@ -26,8 +27,9 @@ class ImageFrame:
         width, height = image_size
         if width <= 0 or height <= 0 or x1 <= x0 or y1 <= y0:
             raise ValueError("Invalid crop or input-image dimensions")
-        return cls(tuple(original_size), tuple(image_size),
-                   ((x1 - x0) / width, 0, x0, 0, (y1 - y0) / height, y0))
+        return cls(
+            tuple(original_size), tuple(image_size), ((x1 - x0) / width, 0, x0, 0, (y1 - y0) / height, y0)
+        )
 
     def to_dict(self):
         return asdict(self)
@@ -48,7 +50,11 @@ def point_to_input_norm01(point, space, image_size):
     width, height = image_size
     if width <= 0 or height <= 0:
         raise ValueError("Invalid image dimensions")
-    scale_x, scale_y = (width, height) if space == "pixels" else ((1000, 1000) if space == "norm1000" else ((999, 999) if space == "norm999" else (1, 1)))
+    scale_x, scale_y = (
+        (width, height)
+        if space == "pixels"
+        else ((1000, 1000) if space == "norm1000" else ((999, 999) if space == "norm999" else (1, 1)))
+    )
     point = [x / scale_x, y / scale_y]
     if any(v < 0 or v > 1 for v in point):
         raise ValueError(f"Coordinates out of range for declared space {space}")
@@ -62,8 +68,7 @@ def to_original_point(point, coordinate_space, frame: ImageFrame | dict):
     u, v = point_to_input_norm01(point, coordinate_space, frame.image_size)
     x, y = u * frame.image_size[0], v * frame.image_size[1]
     a, b, c, d, e, f = finite_values(frame.affine, 6)
-    original = [(a * x + b * y + c) / frame.original_size[0],
-                (d * x + e * y + f) / frame.original_size[1]]
+    original = [(a * x + b * y + c) / frame.original_size[0], (d * x + e * y + f) / frame.original_size[1]]
     if any(v < 0 or v > 1 or not math.isfinite(v) for v in original):
         raise ValueError("Point maps outside the original screenshot; no silent clipping")
     return original
@@ -137,9 +142,15 @@ def parse_grounding(text):
 
 def normalize_grounding(text, coordinate_space, image_size, frame=None):
     coordinates, kind = parse_grounding(text)
-    result = {"raw_response": text, "coordinate_space": coordinate_space, "kind": kind,
-              "input_image_size": list(image_size), "point_input_norm01": None,
-              "point_original_norm01": None, "frame": frame.to_dict() if isinstance(frame, ImageFrame) else frame}
+    result = {
+        "raw_response": text,
+        "coordinate_space": coordinate_space,
+        "kind": kind,
+        "input_image_size": list(image_size),
+        "point_input_norm01": None,
+        "point_original_norm01": None,
+        "frame": frame.to_dict() if isinstance(frame, ImageFrame) else frame,
+    }
     if coordinates is None:
         return result
     if kind == "bbox_xyxy":
@@ -167,7 +178,8 @@ def grounding_prompt(instruction, space, image_size):
         "norm01": "relative coordinates in [0,1]; x=1 is the right edge and y=1 the bottom",
         "pixels": f"absolute pixels in the supplied {width}×{height} image, with x increasing right and y down",
     }[space]
-    return (f"Locate the UI target: {instruction}\nReturn its center using {description}. "
-            'Return only JSON {"point": [x,y]}; use {"point": null} if the target is absent. '
-            "Refer to the supplied image, not an imagined screen or a differently resized image.")
-
+    return (
+        f"Locate the UI target: {instruction}\nReturn its center using {description}. "
+        'Return only JSON {"point": [x,y]}; use {"point": null} if the target is absent. '
+        "Refer to the supplied image, not an imagined screen or a differently resized image."
+    )
