@@ -22,7 +22,7 @@ def test_resized_region_maps_to_original_not_input_image():
 
 
 def test_letterbox_offset_is_removed_explicitly():
-    # A 2000x1000 screenshot scaled to 1000x500 and padded 250 px above and below.
+    # A 2000x1000 screenshot resized to 1000x500 and padded 250 px above and below.
     frame = ImageFrame((2000, 1000), (1000, 1000), (2, 0, 0, 0, 2, -500))
     assert to_original_point([500, 375], "pixels", frame) == [0.5, 0.25]
     with pytest.raises(ValueError, match="outside"):

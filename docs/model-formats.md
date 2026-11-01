@@ -40,7 +40,7 @@ Read the [pinned card](https://huggingface.co/Tongyi-MAI/MAI-UI-2B/blob/50305093
 config/template/processor, the [official grounding client](https://github.com/Tongyi-MAI/MAI-UI/blob/main/MAI-UI/src/mai_grounding_agent.py),
 [system prompt](https://github.com/Tongyi-MAI/MAI-UI/blob/main/MAI-UI/src/prompt.py),
 and [older evaluation adapter](https://github.com/Tongyi-MAI/MAI-UI/blob/main/MAI-UI/evaluation/grounding/models/MAI_UI.py).
-The released client uses `SCALE_FACTOR = 999` and extracts only the JSON inside
+The released client divides coordinates by 999 and extracts only the JSON inside
 `<answer>`; the older batch evaluator divides by 1000, while another path divides
 by resized dimensions. These sources conflict. Our declared `norm999` protocol
 follows the released grounding client and does not guess units from output size.
@@ -65,7 +65,7 @@ the discussion was renamed; the discussion explicitly concerns Qwen3.5.
 `grounding/coordinates.py` supports declared `pixels`, `norm1000`, `norm999`, and
 `norm01` units. It rejects ambiguous multiple targets, non-finite values, booleans,
 and out-of-bounds points. It never guesses units or clips coordinates.
-`ImageFrame` supplies explicit scale, translation, or affine mappings to the original
+`ImageFrame` supplies explicit resize, translation, or affine mappings to the original
 screenshot. An image without a known frame does not acquire an invented original
 coordinate. Nonlinear transformations need caller-owned inverse mapping.
 General `ask_vlm` returns text and never silently interprets that text as coordinates.
