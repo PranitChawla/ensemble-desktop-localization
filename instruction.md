@@ -6,7 +6,10 @@ instruction. You have a Python tool for development and three frozen VLM service
 You write the algorithm; the VLMs return evidence and predictions. Their responses
 are never executed as Python.
 
-Your objective is to maximize point-in-box accuracy under the fixed task budget.
+Your objective is to maximize point-in-region accuracy under the fixed task budget.
+Present targets require a point inside the annotated rectangle or polygon;
+absent targets require `{"point": null}`. Overall accuracy includes all three
+target types, with invalid predictions and execution failures counted as misses.
 Use the visible ScreenSpot-Pro set to develop the program. OSWorld-G is held out
 for the judge. Keep the model checkpoints, serving configuration, evaluator, task
 contract, and dependencies fixed during an improvement run.

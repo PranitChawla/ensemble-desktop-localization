@@ -75,6 +75,8 @@ directory, bounded captured output, and no inherited credentials. It kills the
 process group on timeout. Exceptions and malformed predictions remain in the
 accuracy denominator. Results include request traces, costs, and hashes of the
 submission, model configuration, and evaluation manifest.
+Overall accuracy counts successful rectangle, polygon, and absent-target cases
+over every evaluated case. The summary also reports each target type separately.
 
 The subprocess boundary prevents accidental label passing; it is **not an
 adversarial filesystem/network sandbox**. A production judge must isolate its
@@ -105,10 +107,19 @@ A judge manifest uses paths relative to the manifest file:
 
 ```json
 {"id":"case-1","image":"images/screen.png","instruction":"Click Save","bbox_xyxy":[100,200,180,240]}
+{"id":"case-2","image":"images/screen.png","instruction":"Click the triangle","polygon_xy":[[100,200],[180,200],[140,240]]}
+{"id":"case-3","image":"images/screen.png","instruction":"Click the missing target","bbox_xyxy":null}
 ```
 
-Boxes use original-image pixels; `null` denotes an absent target. Labels are read
-only by the evaluator. Evaluate a submission into a fresh directory:
+Each row has exactly one geometry field. Boxes and polygon vertices use
+original-image pixels; a null box denotes an absent target. Polygon scoring uses
+the [official OSWorld-G ray-crossing rule](https://github.com/xlang-ai/OSWorld-G/blob/daa6bd8e0e629f0917ad2984df930bf0bd967540/evaluation/eval.py),
+including its semi-open treatment of polygon edges. Rectangle edges are inclusive.
+When converting OSWorld-G annotations, convert `bbox` coordinates from
+`[x,y,width,height]` to `bbox_xyxy`, pair the flat polygon coordinates into
+`polygon_xy` vertices, and map `refusal` to a null box. Use original instructions
+and all 564 cases: 470 rectangles, 40 polygons, and 54 absent targets.
+Labels are read only by the evaluator. Evaluate a submission into a fresh directory:
 
 ```bash
 gui-grounding evaluate data/visible.jsonl --output results/candidate-001

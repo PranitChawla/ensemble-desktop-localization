@@ -1,6 +1,6 @@
 [task]
 name = "ensemble-desktop-localization"
-version = "0.1.0"
+version = "0.2.0"
 prompt = "instruction.md"
 models = "models.json"
 
@@ -18,7 +18,7 @@ max_images_per_request = 3
 max_image_bytes = 24000000
 
 [evaluation]
-metric = "point_in_box_accuracy"
+metric = "point_in_region_accuracy"
 failures_count_as_misses = true
 visible = "ScreenSpot-Pro"
 visible_revision = "210e78d3844251110bff86c95835ebd37a6930fa"
