@@ -1,4 +1,4 @@
-# Ensemble GUI Grounding
+# Ensemble Desktop Localization
 
 A task for a coding agent to improve a **single Python grounding harness** around
 three frozen VLMs. The agent uses Python to design the algorithm. VLMs provide
